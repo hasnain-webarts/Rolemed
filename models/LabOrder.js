@@ -1,0 +1,137 @@
+import mongoose from 'mongoose';
+
+const LabOrderSchema = new mongoose.Schema(
+  {
+    orderId: {
+      type: String,
+      required: [true, 'Order ID is required'],
+      unique: true,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Patient',
+      required: true,
+    },
+    patientId: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
+    patientName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    doctor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    doctorName: {
+      type: String,
+      required: true,
+      trim: true,
+      default: 'Dr. Sarah Johnson',
+    },
+    consultationId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    testName: {
+      type: String,
+      required: [true, 'Diagnostic test name is required'],
+      trim: true,
+    },
+    priority: {
+      type: String,
+      enum: ['Routine', 'Urgent', 'Emergency'],
+      default: 'Routine',
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'In Progress', 'Completed', 'Cancelled', 'Specimen Rejected', 'Recollection Requested'],
+      default: 'Pending',
+      index: true,
+    },
+    date: {
+      type: String,
+      required: true,
+      default: () => new Date().toISOString().split('T')[0],
+      index: true,
+    },
+    findings: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    resultMetrics: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    criticalAlert: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    specimenType: {
+      type: String,
+      trim: true,
+      default: 'Blood',
+    },
+    specimenCollectedAt: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
+    },
+    processedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+LabOrderSchema.statics.generateNextOrderId = async function () {
+  const records = await this.find({ orderId: /^REQ-\d+$/ })
+    .select('orderId')
+    .lean();
+
+  if (!records || records.length === 0) {
+    return 'REQ-301';
+  }
+
+  let maxNum = 0;
+  for (const r of records) {
+    const match = r.orderId.match(/^REQ-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
+
+  return `REQ-${maxNum + 1}`;
+};
+
+export default mongoose.models.LabOrder || mongoose.model('LabOrder', LabOrderSchema);

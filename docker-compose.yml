@@ -1,0 +1,48 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rolemed-hms-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - MONGO_URI=mongodb://mongodb:27017/rolemed
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - rolemed-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: rolemed-hms-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=rolemed
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - rolemed-network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  rolemed-network:
+    driver: bridge
+

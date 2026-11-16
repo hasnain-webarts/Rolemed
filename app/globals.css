@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+body {
+    background: #f1faff;
+}
+
+.close-icon {
+    cursor: url('/close-icon.svg'), auto; /* Fallback to default cursor if custom cursor fails */
+}

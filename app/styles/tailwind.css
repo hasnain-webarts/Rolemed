@@ -1,0 +1,175 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/container-queries";
+
+@theme {
+    /* --- Colors --- */
+    --color-primary-fixed: #d6e3ff;
+    --color-on-tertiary: #ffffff;
+    --color-inverse-on-surface: #dff4ff;
+    --color-error: #ba1a1a;
+    --color-surface-container-highest: #cfe6f2;
+    --color-surface-tint: #005db7;
+    --color-primary-container: #1565c0;
+    --color-on-error-container: #93000a;
+    --color-outline: #727783;
+    --color-surface-container-low: #e6f6ff;
+    --color-surface-dim: #c7dde9;
+    --color-on-surface: #071e27;
+    --color-surface-container-lowest: #ffffff;
+    --color-inverse-primary: #a9c7ff;
+    --color-error-container: #ffdad6;
+    --color-on-primary-fixed: #001b3d;
+    --color-on-tertiary-fixed: #0f1d25;
+    --color-on-secondary: #ffffff;
+    --color-primary-fixed-dim: #a9c7ff;
+    --color-surface-container-high: #d5ecf8;
+    --color-on-primary-fixed-variant: #00468c;
+    --color-on-tertiary-fixed-variant: #3b4951;
+    --color-on-secondary-fixed: #00201d;
+    --color-on-secondary-container: #006f66;
+    --color-on-background: #071e27;
+    --color-surface-variant: #cfe6f2;
+    --color-outline-variant: #c2c6d4;
+    --color-background: #f3faff;
+    --color-on-primary: #ffffff;
+    --color-tertiary-fixed: #d6e5ef;
+    --color-surface-container: #dbf1fe;
+    --color-on-surface-variant: #424752;
+    --color-on-primary-container: #dae5ff;
+    --color-tertiary-fixed-dim: #bac9d3;
+    --color-secondary-fixed: #84f5e8;
+    --color-surface-bright: #f3faff;
+    --color-on-secondary-fixed-variant: #005049;
+    --color-secondary-container: #81f3e5;
+    --color-secondary: #006a62;
+    --color-primary: #004d99;
+    --color-on-tertiary-container: #d8e7f2;
+    --color-surface: #f3faff;
+    --color-tertiary: #425059;
+    --color-secondary-fixed-dim: #66d9cc;
+    --color-on-error: #ffffff;
+    --color-inverse-surface: #1e333c;
+
+    /* --- Spacing --- */
+    --spacing-xs: 4px;
+    --spacing-base: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 24px;
+    --spacing-lg: 48px;
+    --spacing-xl: 64px;
+    --spacing-gutter: 24px;
+    --spacing-margin: 32px;
+
+    /* --- Border Radius --- */
+    --radius-DEFAULT: 0.25rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-full: 9999px;
+
+    /* --- Typography: Font Families --- */
+    --font-display-lg: var(--font-geist-sans);
+    --font-headline-md: var(--font-geist-sans);
+    --font-body-md: var(--font-geist-sans);
+    --font-label-caps: var(--font-geist-sans);
+    --font-title-sm: var(--font-geist-sans);
+    --font-body-sm: var(--font-geist-sans);
+
+    /* --- Typography: Font Sizes & Default Line Heights --- */
+    --text-display-lg: 48px;
+    --text-display-lg--line-height: 1.2;
+
+    --text-headline-md: 24px;
+    --text-headline-md--line-height: 1.3;
+
+    --text-body-md: 16px;
+    --text-body-md--line-height: 1.6;
+
+    --text-label-caps: 12px;
+    --text-label-caps--line-height: 1.0;
+    --text-label-caps--letter-spacing: 0.05em;
+
+    --text-title-sm: 18px;
+    --text-title-sm--line-height: 1.4;
+
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 1.5;
+}
+
+/* --- Custom Utility Styles --- */
+@utility material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+}
+
+@utility sidebar-scroll {
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+    }
+}
+
+@utility glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(227, 242, 253, 0.5);
+}
+
+@utility clinical-shadow {
+    box-shadow: 0 4px 20px rgba(21, 101, 192, 0.08);
+}
+
+@utility custom-shadow {
+    box-shadow: 0 4px 20px rgba(21, 101, 192, 0.08);
+}
+
+@utility no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+
+    /* Firefox */
+    &::-webkit-scrollbar {
+        display: none;
+        /* Chrome, Safari and Opera */
+    }
+}
+
+/* --- Container Width Utilities --- */
+@utility max-w-xs {
+    max-width: 20rem;
+}
+@utility max-w-sm {
+    max-width: 24rem;
+}
+@utility max-w-md {
+    max-width: 28rem;
+}
+@utility max-w-lg {
+    max-width: 32rem;
+}
+@utility max-w-xl {
+    max-width: 36rem;
+}
+@utility max-w-2xl {
+    max-width: 42rem;
+}
+@utility max-w-3xl {
+    max-width: 48rem;
+}
+@utility max-w-4xl {
+    max-width: 56rem;
+}
+@utility max-w-5xl {
+    max-width: 64rem;
+}
+@utility max-w-6xl {
+    max-width: 72rem;
+}
+@utility max-w-7xl {
+    max-width: 80rem;
+}

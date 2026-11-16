@@ -1,0 +1,49 @@
+name: RoleMed RB-HMS Continuous Integration
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  audit-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Automated Unit & RBAC Test Suites
+        run: npm test
+        env:
+          NEXTAUTH_SECRET: ci-test-secret-hospital-key-12345
+          NEXTAUTH_URL: http://localhost:3000
+          MONGODB_URI: mongodb://localhost:27017/rolemed_ci
+
+      - name: Build Next.js Application
+        run: npm run build
+        env:
+          NEXTAUTH_SECRET: ci-test-secret-hospital-key-12345
+          NEXTAUTH_URL: http://localhost:3000
+          MONGODB_URI: mongodb://localhost:27017/rolemed_ci
+
