@@ -4,6 +4,7 @@ import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import Equipment from '@/models/Equipment';
 import Counter from '@/models/Counter';
 import AuditLog from '@/models/AuditLog';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,10 +14,6 @@ const NO_CACHE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export async function GET(req) {
   try {

@@ -5,6 +5,7 @@ import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import User from '@/models/User';
 import AuditLog from '@/models/AuditLog';
 import { dispatchNotification } from '@/lib/notificationService';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,10 +15,6 @@ const NO_CACHE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export async function GET(req) {
   try {
@@ -48,19 +45,34 @@ export async function GET(req) {
       ];
     }
 
-    const [staffList, allUsers] = await Promise.all([
+    const [staffList, roleCountsAgg, activeCount] = await Promise.all([
       User.find(query).select('-password').sort({ createdAt: -1 }).limit(limit).lean(),
-      User.find({}).select('role isActive').lean(),
+      User.aggregate([
+        {
+          $group: {
+            _id: '$role',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      User.countDocuments({ isActive: { $ne: false } }),
     ]);
 
+    const roleMap = {};
+    let totalAll = 0;
+    for (const r of roleCountsAgg) {
+      roleMap[r._id] = r.count;
+      totalAll += r.count;
+    }
+
     const counts = {
-      all: allUsers.length,
-      doctors: allUsers.filter((u) => u.role === 'doctor').length,
-      nurses: allUsers.filter((u) => u.department?.toLowerCase().includes('nurs')).length || 4,
-      receptionists: allUsers.filter((u) => u.role === 'receptionist').length,
-      pharmacists: allUsers.filter((u) => u.role === 'pharmacist').length,
-      labTechs: allUsers.filter((u) => u.role === 'lab-technician').length,
-      active: allUsers.filter((u) => u.isActive !== false).length,
+      all: totalAll,
+      doctors: roleMap['doctor'] || 0,
+      nurses: roleMap['nurse'] || 0,
+      receptionists: roleMap['receptionist'] || 0,
+      pharmacists: roleMap['pharmacist'] || 0,
+      labTechs: roleMap['lab-technician'] || 0,
+      active: activeCount,
     };
 
     return NextResponse.json(

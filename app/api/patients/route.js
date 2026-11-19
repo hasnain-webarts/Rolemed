@@ -8,10 +8,7 @@ import Appointment from '@/models/Appointment';
 import Consultation from '@/models/Consultation';
 import Admission from '@/models/Admission';
 import { dispatchNotification } from '@/lib/notificationService';
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import escapeRegex from '@/lib/escapeRegex';
 
 export async function GET(req) {
   try {

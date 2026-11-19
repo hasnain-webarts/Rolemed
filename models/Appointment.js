@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Counter from './Counter.js';
 
 const AppointmentSchema = new mongoose.Schema(
   {
@@ -79,29 +80,17 @@ const AppointmentSchema = new mongoose.Schema(
 );
 
 // High-frequency compound indexes for clinical queries and doctor rosters
-AppointmentSchema.index({ doctorId: 1, date: 1, status: 1 });
+AppointmentSchema.index({ doctor: 1, date: 1, status: 1 });
+AppointmentSchema.index({ doctorName: 1, date: 1, status: 1 });
 AppointmentSchema.index({ patientId: 1, createdAt: -1 });
 AppointmentSchema.index({ date: 1, status: 1, queueNumber: 1 });
 
 AppointmentSchema.statics.generateNextAppointmentId = async function () {
-  const records = await this.find({ appointmentId: /^APT-\d+$/ })
-    .select('appointmentId')
-    .lean();
-
-  if (!records || records.length === 0) {
-    return 'APT-101';
-  }
-
-  let maxNum = 0;
-  for (const r of records) {
-    const match = r.appointmentId.match(/^APT-(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-
-  return `APT-${String(maxNum + 1).padStart(3, '0')}`;
+  return await Counter.getNextSequence('appointmentId', {
+    prefix: 'APT-',
+    padLength: 3,
+    seedFloor: 101,
+  });
 };
 
 export default mongoose.models.Appointment || mongoose.model('Appointment', AppointmentSchema);

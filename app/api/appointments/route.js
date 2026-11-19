@@ -7,6 +7,7 @@ import Patient from '@/models/Patient';
 import User from '@/models/User';
 import AuditLog from '@/models/AuditLog';
 import { dispatchNotification } from '@/lib/notificationService';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,10 +17,6 @@ const NO_CACHE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export async function GET(req) {
   try {

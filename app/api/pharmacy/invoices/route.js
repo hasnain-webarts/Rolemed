@@ -4,6 +4,8 @@ import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import PharmacyInvoice from '@/models/PharmacyInvoice';
 import Medicine from '@/models/Medicine';
 import Prescription from '@/models/Prescription';
+import Counter from '@/models/Counter';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,21 +16,12 @@ const NO_CACHE_HEADERS = {
   Expires: '0',
 };
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 async function getNextPharmacyInvoiceId() {
-  const records = await PharmacyInvoice.find({ invoiceId: /^PH-INV-\d+$/ }).select('invoiceId').lean();
-  let maxNum = 500;
-  for (const r of records) {
-    const match = r.invoiceId.match(/^PH-INV-(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-  return `PH-INV-${maxNum + 1}`;
+  return await Counter.getNextSequence('pharmacyInvoiceId', {
+    prefix: 'PH-INV-',
+    padLength: 3,
+    seedFloor: 501,
+  });
 }
 
 export async function GET(req) {

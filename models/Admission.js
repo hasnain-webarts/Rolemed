@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Counter from './Counter.js';
 
 const AdmissionSchema = new mongoose.Schema(
   {
@@ -101,22 +102,11 @@ AdmissionSchema.index({ patientId: 1, status: 1 });
 AdmissionSchema.index({ status: 1, admissionDate: -1 });
 
 AdmissionSchema.statics.generateNextAdmissionId = async function () {
-  const lastAdm = await this.findOne({ admissionId: /^ADM-\d+$/ })
-    .sort({ createdAt: -1 })
-    .select('admissionId')
-    .lean();
-
-  if (!lastAdm || !lastAdm.admissionId) {
-    return 'ADM-201';
-  }
-
-  const matches = lastAdm.admissionId.match(/ADM-(\d+)/);
-  if (matches && matches[1]) {
-    const nextNum = parseInt(matches[1], 10) + 1;
-    return `ADM-${String(nextNum).padStart(3, '0')}`;
-  }
-
-  return `ADM-${Math.floor(200 + Math.random() * 800)}`;
+  return await Counter.getNextSequence('admissionId', {
+    prefix: 'ADM-',
+    padLength: 3,
+    seedFloor: 201,
+  });
 };
 
 export default mongoose.models.Admission || mongoose.model('Admission', AdmissionSchema);

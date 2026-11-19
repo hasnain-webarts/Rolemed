@@ -4,6 +4,7 @@ import {
   generateNotificationContent,
   isSmtpConfigured,
   sendEmailDelivery,
+  sendWhatsAppDelivery,
 } from '@/lib/notificationService';
 
 describe('Omnichannel Notification System & Pakistani Messaging Suite', () => {
@@ -238,6 +239,23 @@ describe('Omnichannel Notification System & Pakistani Messaging Suite', () => {
       });
       expect(res.status).toBe('simulated');
       expect(res.details).toContain('Simulated dispatch');
+    });
+
+    it('returns simulated status when WhatsApp gateway is not configured', async () => {
+      const res = await sendWhatsAppDelivery({
+        phone: '03001234567',
+        text: 'Hospital Appointment Reminder',
+      });
+      expect(res.status).toBe('simulated');
+      expect(res.details).toContain('Simulated dispatch');
+    });
+
+    it('skips WhatsApp delivery gracefully on invalid phone number', async () => {
+      const res = await sendWhatsAppDelivery({
+        phone: 'invalid-number',
+        text: 'Test',
+      });
+      expect(res.status).toBe('skipped');
     });
   });
 });

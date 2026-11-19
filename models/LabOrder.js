@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Counter from './Counter.js';
 
 const LabOrderSchema = new mongoose.Schema(
   {
@@ -114,24 +115,11 @@ const LabOrderSchema = new mongoose.Schema(
 );
 
 LabOrderSchema.statics.generateNextOrderId = async function () {
-  const records = await this.find({ orderId: /^REQ-\d+$/ })
-    .select('orderId')
-    .lean();
-
-  if (!records || records.length === 0) {
-    return 'REQ-301';
-  }
-
-  let maxNum = 0;
-  for (const r of records) {
-    const match = r.orderId.match(/^REQ-(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-
-  return `REQ-${maxNum + 1}`;
+  return await Counter.getNextSequence('labOrderId', {
+    prefix: 'REQ-',
+    padLength: 3,
+    seedFloor: 301,
+  });
 };
 
 export default mongoose.models.LabOrder || mongoose.model('LabOrder', LabOrderSchema);

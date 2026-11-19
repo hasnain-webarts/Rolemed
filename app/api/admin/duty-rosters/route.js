@@ -4,6 +4,7 @@ import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import DutyRoster from '@/models/DutyRoster';
 import User from '@/models/User';
 import AuditLog from '@/models/AuditLog';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,10 +14,6 @@ const NO_CACHE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export async function GET(req) {
   try {
@@ -55,17 +52,36 @@ export async function GET(req) {
       ];
     }
 
-    const [rosters, allRosters] = await Promise.all([
+    const [rosters, shiftStats, onDutyCount] = await Promise.all([
       DutyRoster.find(query).sort({ date: -1, createdAt: -1 }).limit(limit).lean(),
-      DutyRoster.find({}).select('shift status department').lean(),
+      DutyRoster.aggregate([
+        {
+          $group: {
+            _id: '$shift',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      DutyRoster.countDocuments({ status: 'On Duty' }),
     ]);
 
+    let morning = 0;
+    let evening = 0;
+    let night = 0;
+    let total = 0;
+    for (const s of shiftStats) {
+      total += s.count;
+      if (s._id?.includes('Morning')) morning += s.count;
+      else if (s._id?.includes('Evening')) evening += s.count;
+      else if (s._id?.includes('Night')) night += s.count;
+    }
+
     const stats = {
-      total: allRosters.length,
-      morning: allRosters.filter((r) => r.shift?.includes('Morning')).length,
-      evening: allRosters.filter((r) => r.shift?.includes('Evening')).length,
-      night: allRosters.filter((r) => r.shift?.includes('Night')).length,
-      onDuty: allRosters.filter((r) => r.status === 'On Duty').length,
+      total,
+      morning,
+      evening,
+      night,
+      onDuty: onDutyCount,
     };
 
     return NextResponse.json(

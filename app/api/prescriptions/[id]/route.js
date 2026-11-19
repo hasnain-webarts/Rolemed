@@ -3,6 +3,7 @@ import connectDB from '@/db/connectDB';
 import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import Prescription from '@/models/Prescription';
 import Medicine from '@/models/Medicine';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,10 +13,6 @@ const NO_CACHE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export async function GET(req, { params }) {
   try {

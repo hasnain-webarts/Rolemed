@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/db/connectDB';
 import { authenticateRoute, handleApiError } from '@/lib/authGuard';
 import LabInvoice from '@/models/LabInvoice';
+import Counter from '@/models/Counter';
+import escapeRegex from '@/lib/escapeRegex';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,21 +14,12 @@ const NO_CACHE_HEADERS = {
   Expires: '0',
 };
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 async function getNextLabInvoiceId() {
-  const records = await LabInvoice.find({ invoiceId: /^LAB-INV-\d+$/ }).select('invoiceId').lean();
-  let maxNum = 700;
-  for (const r of records) {
-    const match = r.invoiceId.match(/^LAB-INV-(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-  return `LAB-INV-${maxNum + 1}`;
+  return await Counter.getNextSequence('labInvoiceId', {
+    prefix: 'LAB-INV-',
+    padLength: 3,
+    seedFloor: 701,
+  });
 }
 
 export async function GET(req) {
