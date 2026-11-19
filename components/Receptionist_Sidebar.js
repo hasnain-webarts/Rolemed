@@ -1,7 +1,7 @@
 "use client";
 
 import { MdOutlineDashboard, MdOutlinePerson } from "react-icons/md";
-import { Calendar, Bed, ListOrdered, CalendarDays, X } from 'lucide-react';
+import { Calendar, Bed, ListOrdered, CalendarDays, X, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from 'next-auth/react';
@@ -15,6 +15,7 @@ function ReceptionistSidebar({ isOpen, onClose }) {
 
     const mainLinks = [
         { icon: <MdOutlineDashboard size={22} />, label: 'Dashboard', link: "/dashboard/receptionist" },
+        { icon: <CreditCard size={22} />, label: 'Cashier & Billing', link: "/dashboard/receptionist/billing" },
         { icon: <MdOutlinePerson size={22} />, label: 'Patient Register', link: "/dashboard/receptionist/patients" },
         { icon: <Calendar size={22} />, label: 'Appointments', link: "/dashboard/receptionist/appointments" },
         { icon: <Bed size={22} />, label: 'IPD Admissions', link: "/dashboard/receptionist/admissions" },

@@ -278,18 +278,16 @@ export default function ReceptionistAdmissions() {
 
     try {
       if (patientId) {
-        const [phmRes, labRes] = await Promise.all([
-          fetch(`/api/pharmacy/invoices?status=Unpaid&search=${encodeURIComponent(patientId)}`),
-          fetch(`/api/lab/invoices?status=Unpaid&search=${encodeURIComponent(patientId)}`),
-        ]);
-        const phmData = await phmRes.json();
-        const labData = await labRes.json();
-        unpaidInvoices = [
-          ...(phmData.invoices || []).filter((i) => i.patientId === patientId),
-          ...(labData.invoices || []).filter((i) => i.patientId === patientId),
-        ];
-        if (unpaidInvoices.length > 0) {
-          totalUnpaid = unpaidInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+        const res = await fetch(`/api/billing/pending-charges?patientId=${encodeURIComponent(patientId)}`);
+        const data = await res.json();
+        if (data.success && data.totals) {
+          totalUnpaid = data.totals.grandTotal || 0;
+          const itemsCount = 
+            (data.charges.prescriptions?.length || 0) +
+            (data.charges.labOrders?.length || 0) +
+            (data.charges.appointments?.length || 0) +
+            (data.charges.admission ? 1 : 0);
+          unpaidInvoices = new Array(itemsCount).fill({});
         }
       }
     } catch {
@@ -1116,6 +1114,15 @@ export default function ReceptionistAdmissions() {
                   <strong className="underline font-mono">PKR Rs. {dischargeModalData.totalUnpaid.toLocaleString()}</strong>.
                   Please verify payment clearance at the cashier desk prior to releasing this patient.
                 </p>
+                <div className="mt-2">
+                  <a
+                    href={`/dashboard/receptionist/billing`}
+                    target="_blank"
+                    className="text-xs font-bold text-primary underline hover:text-primary/80"
+                  >
+                    Open Cashier Desk in New Tab to Settle Charges →
+                  </a>
+                </div>
               </div>
             ) : null
           }

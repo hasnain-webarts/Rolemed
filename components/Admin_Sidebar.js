@@ -3,7 +3,7 @@
 import { FaRegAddressCard } from "react-icons/fa";
 import { FaClockRotateLeft } from "react-icons/fa6";
 import { MdOutlineDashboard, MdOutlinePerson, MdOutlineLocalPharmacy, MdSchedule, MdOutlineAnalytics } from "react-icons/md";
-import { Stethoscope, Calendar, FlaskConical, X, Cpu, MessageSquare } from 'lucide-react';
+import { Stethoscope, Calendar, FlaskConical, X, Cpu, MessageSquare, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from 'next-auth/react';
@@ -27,6 +27,7 @@ function Sidebar({ isOpen, onClose }) {
     ];
 
     const operationalLinks = [
+        { icon: <Receipt size={20} />, label: 'Billing Rules', link: "/dashboard/admin/billing-rules" },
         { icon: <MessageSquare size={20} />, label: 'Messages & Outbox', link: "/dashboard/admin/notifications" },
         { icon: <MdSchedule size={22} />, label: 'Duty Rosters', link: "/dashboard/admin/duty-rosters" },
         { icon: <MdOutlineAnalytics size={22} />, label: 'Reports', link: "/dashboard/admin/reports" },
