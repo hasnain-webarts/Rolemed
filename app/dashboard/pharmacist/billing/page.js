@@ -18,11 +18,14 @@ import {
   Layers,
   Coins,
   ChevronDown,
+  CreditCard,
 } from 'lucide-react';
 import Sidebar from '@/components/Pharmacist_Sidebar';
 import Footer from '@/components/Footer';
+import BillingDesk from '@/components/BillingDesk';
 
 export default function PharmacyBilling() {
+  const [billingView, setBillingView] = useState('hospital'); // 'hospital' | 'dispensary'
   const [patients, setPatients] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
@@ -375,10 +378,63 @@ export default function PharmacyBilling() {
       (s.patientId || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (billingView === 'hospital') {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between shrink-0 z-40">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBillingView('hospital')}
+              className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs flex items-center gap-1.5"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>Hospital Cashier Desk</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingView('dispensary')}
+              className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition"
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              <span>Dispensary OTC Sales</span>
+            </button>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">
+            Pharmacy Department Billing Counter
+          </span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <BillingDesk
+            department="Pharmacy"
+            SidebarComponent={Sidebar}
+            portalTitle="Pharmacy Hospital Cashier & Settlement Desk"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-background p-margin no-scrollbar">
+        {/* View Switcher Header Bar */}
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBillingView('hospital')}
+            className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 border border-slate-200 transition"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>Switch to Hospital Cashier Desk</span>
+          </button>
+          <span className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs flex items-center gap-1.5">
+            <Receipt className="w-3.5 h-3.5" />
+            <span>Dispensary OTC Sales Active</span>
+          </span>
+        </div>
+
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-lg">
           <div>

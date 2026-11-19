@@ -61,6 +61,19 @@
     --spacing-gutter: 24px;
     --spacing-margin: 32px;
 
+    /* --- Containers & Max Widths --- */
+    --container-xs: 20rem;
+    --container-sm: 24rem;
+    --container-md: 28rem;
+    --container-lg: 32rem;
+    --container-xl: 36rem;
+    --container-2xl: 42rem;
+    --container-3xl: 48rem;
+    --container-4xl: 56rem;
+    --container-5xl: 64rem;
+    --container-6xl: 72rem;
+    --container-7xl: 80rem;
+
     /* --- Border Radius --- */
     --radius-DEFAULT: 0.25rem;
     --radius-lg: 0.5rem;

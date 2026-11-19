@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Lab_Technician_Sidebar';
 import Footer from '@/components/Footer';
+import BillingDesk from '@/components/BillingDesk';
 
 // Standard Laboratory Diagnostic Catalog in Pakistani Rupees (PKR)
 export const LAB_CATALOG = [
@@ -40,6 +41,7 @@ export const LAB_CATALOG = [
 
 export default function LabBillingPage() {
   const { data: session } = useSession();
+  const [billingView, setBillingView] = useState('hospital'); // 'hospital' | 'catalog'
   const [patients, setPatients] = useState([]);
   const [labOrders, setLabOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -411,12 +413,65 @@ export default function LabBillingPage() {
     });
   }, [invoices, statusFilter, ledgerSearch]);
 
+  if (billingView === 'hospital') {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between shrink-0 z-40">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBillingView('hospital')}
+              className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs flex items-center gap-1.5"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>Hospital Cashier Desk</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingView('catalog')}
+              className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>Diagnostic Catalog POS</span>
+            </button>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">
+            Laboratory Department Billing Counter
+          </span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <BillingDesk
+            department="Laboratory"
+            SidebarComponent={Sidebar}
+            portalTitle="Diagnostic Laboratory Cashier & Settlement Desk"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex bg-background min-h-screen text-on-surface">
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-w-0">
         <div className="p-6 md:p-8 space-y-6 flex-1">
+          {/* Switcher Bar */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBillingView('hospital')}
+              className="cursor-pointer px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 border border-slate-200 transition"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>Switch to Hospital Cashier Desk</span>
+            </button>
+            <span className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs flex items-center gap-1.5">
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>Diagnostic Catalog POS Active</span>
+            </span>
+          </div>
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-outline-variant/10">
             <div>

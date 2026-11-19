@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { MdOutlineDashboard } from "react-icons/md";
 import { FlaskConical, FileText, Receipt, X } from 'lucide-react';
 import Link from 'next/link';
@@ -9,6 +10,20 @@ import { useSession, signOut } from 'next-auth/react';
 function LabTechnicianSidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const { data: session } = useSession();
+    const [billingEnabled, setBillingEnabled] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        fetch('/api/admin/billing-rules')
+            .then((r) => r.json())
+            .then((d) => {
+                if (isMounted && d.success && d.settings?.enabledBillingDepartments) {
+                    setBillingEnabled(Boolean(d.settings.enabledBillingDepartments.laboratory));
+                }
+            })
+            .catch(() => {});
+        return () => { isMounted = false; };
+    }, []);
 
     const userName = session?.user?.name || "Felix Vance";
     const userRole = session?.user?.role || "lab-technician";
@@ -17,7 +32,7 @@ function LabTechnicianSidebar({ isOpen, onClose }) {
         { icon: <MdOutlineDashboard size={22} />, label: 'Dashboard', link: "/dashboard/lab-technician" },
         { icon: <FlaskConical size={22} />, label: 'Test Requests', link: "/dashboard/lab-technician/test-requests" },
         { icon: <FileText size={22} />, label: 'Completed Reports', link: "/dashboard/lab-technician/reports" },
-        { icon: <Receipt size={22} />, label: 'Lab Billing', link: "/dashboard/lab-technician/billing" },
+        ...(billingEnabled ? [{ icon: <Receipt size={22} />, label: 'Lab Billing', link: "/dashboard/lab-technician/billing" }] : []),
     ];
 
     const isLinkActive = (link) => {

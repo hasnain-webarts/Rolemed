@@ -615,7 +615,7 @@ SMTP_FROM="RoleMed Healthcare" <notifications@rolemed.org>`}
                   </div>
 
                   {/* WhatsApp Message Bubble Simulation */}
-                  <div className="max-w-md mx-auto p-4 rounded-2xl bg-[#dcf8c6] dark:bg-emerald-950/40 text-slate-900 dark:text-emerald-100 border border-emerald-500/20 shadow-sm space-y-2">
+                  <div className="w-full max-w-[500px] mx-auto p-4 rounded-2xl bg-[#dcf8c6] dark:bg-emerald-950/40 text-slate-900 dark:text-emerald-100 border border-emerald-500/20 shadow-sm space-y-2">
                     <div className="flex items-center justify-between text-[11px] text-emerald-800 dark:text-emerald-300 font-bold border-b border-emerald-500/20 pb-1">
                       <span>RoleMed Hospital Automated Alert</span>
                       <span>{new Date(previewNotification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

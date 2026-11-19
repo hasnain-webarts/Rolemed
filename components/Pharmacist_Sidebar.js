@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { MdOutlineDashboard, MdOutlineLocalPharmacy } from "react-icons/md";
 import { Pill, Receipt, X } from 'lucide-react';
 import Link from 'next/link';
@@ -9,6 +10,20 @@ import { useSession, signOut } from 'next-auth/react';
 function PharmacistSidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const { data: session } = useSession();
+    const [billingEnabled, setBillingEnabled] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        fetch('/api/admin/billing-rules')
+            .then((r) => r.json())
+            .then((d) => {
+                if (isMounted && d.success && d.settings?.enabledBillingDepartments) {
+                    setBillingEnabled(Boolean(d.settings.enabledBillingDepartments.pharmacy));
+                }
+            })
+            .catch(() => {});
+        return () => { isMounted = false; };
+    }, []);
 
     const userName = session?.user?.name || "Dr. Michael Chen";
     const userRole = session?.user?.role || "pharmacist";
@@ -17,7 +32,7 @@ function PharmacistSidebar({ isOpen, onClose }) {
         { icon: <MdOutlineDashboard size={22} />, label: 'Dashboard', link: "/dashboard/pharmacist" },
         { icon: <MdOutlineLocalPharmacy size={22} />, label: 'Stock Inventory', link: "/dashboard/pharmacist/inventory" },
         { icon: <Pill size={22} />, label: 'Dispense Rx', link: "/dashboard/pharmacist/prescriptions" },
-        { icon: <Receipt size={22} />, label: 'Pharmacy Billing', link: "/dashboard/pharmacist/billing" },
+        ...(billingEnabled ? [{ icon: <Receipt size={22} />, label: 'Pharmacy Billing', link: "/dashboard/pharmacist/billing" }] : []),
     ];
 
     const isLinkActive = (link) => {

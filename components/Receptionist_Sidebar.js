@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { MdOutlineDashboard, MdOutlinePerson } from "react-icons/md";
 import { Calendar, Bed, ListOrdered, CalendarDays, X, CreditCard } from 'lucide-react';
 import Link from 'next/link';
@@ -9,13 +10,27 @@ import { useSession, signOut } from 'next-auth/react';
 function ReceptionistSidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const { data: session } = useSession();
+    const [billingEnabled, setBillingEnabled] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+        fetch('/api/admin/billing-rules')
+            .then((r) => r.json())
+            .then((d) => {
+                if (isMounted && d.success && d.settings?.enabledBillingDepartments) {
+                    setBillingEnabled(Boolean(d.settings.enabledBillingDepartments.reception));
+                }
+            })
+            .catch(() => {});
+        return () => { isMounted = false; };
+    }, []);
 
     const userName = session?.user?.name || "Mike Miller";
     const userRole = session?.user?.role || "receptionist";
 
     const mainLinks = [
         { icon: <MdOutlineDashboard size={22} />, label: 'Dashboard', link: "/dashboard/receptionist" },
-        { icon: <CreditCard size={22} />, label: 'Cashier & Billing', link: "/dashboard/receptionist/billing" },
+        ...(billingEnabled ? [{ icon: <CreditCard size={22} />, label: 'Cashier & Billing', link: "/dashboard/receptionist/billing" }] : []),
         { icon: <MdOutlinePerson size={22} />, label: 'Patient Register', link: "/dashboard/receptionist/patients" },
         { icon: <Calendar size={22} />, label: 'Appointments', link: "/dashboard/receptionist/appointments" },
         { icon: <Bed size={22} />, label: 'IPD Admissions', link: "/dashboard/receptionist/admissions" },
