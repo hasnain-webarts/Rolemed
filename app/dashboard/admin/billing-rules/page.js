@@ -47,9 +47,10 @@ export default function AdminBillingRulesPage() {
     standardConsultationFee: 1000,
   });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  const showNotice = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -91,10 +92,52 @@ export default function AdminBillingRulesPage() {
     }
   };
 
-  const showNotice = (type, message) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 5000);
-  };
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/admin/billing-rules");
+        const data = await res.json();
+        if (isMounted && data.success && data.settings) {
+          setBillingMode(data.settings.billingMode || "Centralized");
+          setDepartments(
+            data.settings.enabledBillingDepartments || {
+              reception: true,
+              pharmacy: false,
+              laboratory: false,
+            }
+          );
+          setClearanceGate(
+            data.settings.clearanceGate || {
+              requirePaymentForMeds: true,
+              requirePaymentForLabs: true,
+              emergencyBypass: true,
+            }
+          );
+          setPricingRules(
+            data.settings.pricingRules || {
+              defaultCurrency: "PKR",
+              taxPercentage: 0,
+              autoCalculateBedStayCharges: true,
+              dailyBedRateGeneralWard: 1500,
+              dailyBedRateICU: 8000,
+              dailyBedRateEmergency: 2000,
+              standardConsultationFee: 1000,
+            }
+          );
+        }
+      } catch {
+        if (isMounted) showNotice("error", "Failed to fetch current hospital billing configuration");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const applyPresetMode = (mode) => {
     setBillingMode(mode);

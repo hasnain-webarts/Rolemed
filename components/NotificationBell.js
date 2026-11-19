@@ -29,23 +29,27 @@ export default function NotificationBell({ role = 'admin' }) {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'unread'
   const popoverRef = useRef(null);
 
-  async function fetchNotifications() {
-    try {
-      const res = await fetch('/api/notifications?limit=25', { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch notifications:', err);
-    }
-  }
-
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 25000); // 25s auto-refresh
-    return () => clearInterval(interval);
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/notifications?limit=25', { cache: 'no-store' });
+        const data = await res.json();
+        if (!ignore && data.success) {
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch notifications:', err);
+      }
+    }
+
+    load();
+    const interval = setInterval(load, 25000); // 25s auto-refresh
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Click outside and escape key handling

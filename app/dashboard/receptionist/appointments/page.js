@@ -79,13 +79,6 @@ function AppointmentsContent() {
   const [appointmentReason, setAppointmentReason] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // Sync urlPatientId when searchParams changes
-  useEffect(() => {
-    if (urlPatientId) {
-      setSelectedPatientId(urlPatientId);
-    }
-  }, [urlPatientId]);
-
   // Reschedule Modal State
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [editDate, setEditDate] = useState('');

@@ -40,10 +40,6 @@ export default function ReceptionistBillingPage() {
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
 
-  useEffect(() => {
-    fetchRecentInvoices();
-  }, []);
-
   const showNotice = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
@@ -63,6 +59,28 @@ export default function ReceptionistBillingPage() {
       setLoadingRecent(false);
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/billing/invoices?limit=8");
+        const data = await res.json();
+        if (isMounted && data.success) {
+          setRecentInvoices(data.invoices || []);
+        }
+      } catch {
+        // Ignore background load error
+      } finally {
+        if (isMounted) setLoadingRecent(false);
+      }
+    }
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSearchPatient = async (e) => {
     if (e) e.preventDefault();
@@ -773,7 +791,7 @@ export default function ReceptionistBillingPage() {
                 <p className="text-[11px] text-slate-500">Multan Road / Medical Complex, Pakistan</p>
                 <p className="text-[11px] font-semibold text-primary mt-1">Invoice #{activeReceipt.invoiceId}</p>
                 <p className="text-[10px] text-slate-400">
-                  {new Date(activeReceipt.createdAt || Date.now()).toLocaleString()}
+                  {activeReceipt.createdAt ? new Date(activeReceipt.createdAt).toLocaleString() : ''}
                 </p>
               </div>
 
