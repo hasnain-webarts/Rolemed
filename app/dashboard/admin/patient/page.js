@@ -320,8 +320,16 @@ export default function AdminPatientsPage() {
                 {selectedPatient.emergencyContact && (
                   <div className="p-3 rounded-xl bg-surface-container/20 border border-outline-variant/10 text-[11px]">
                     <span className="font-bold text-outline uppercase block mb-1">Emergency Contact</span>
-                    <p className="font-semibold">{selectedPatient.emergencyContact.name} ({selectedPatient.emergencyContact.relation || "Kin"})</p>
-                    <p className="font-mono text-outline">{selectedPatient.emergencyContact.phone}</p>
+                    <p className="font-semibold">
+                      {typeof selectedPatient.emergencyContact === 'object'
+                        ? `${selectedPatient.emergencyContact.name || 'Contact'} (${selectedPatient.emergencyContact.relation || 'Kin'})`
+                        : selectedPatient.emergencyContact}
+                    </p>
+                    <p className="font-mono text-outline">
+                      {typeof selectedPatient.emergencyContact === 'object'
+                        ? selectedPatient.emergencyContact.phone || selectedPatient.emergencyPhone || 'No phone'
+                        : selectedPatient.emergencyPhone || 'No phone'}
+                    </p>
                   </div>
                 )}
 

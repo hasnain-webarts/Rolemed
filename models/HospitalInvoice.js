@@ -53,12 +53,12 @@ const HospitalInvoiceSchema = new mongoose.Schema(
       {
         department: {
           type: String,
-          enum: ['Reception', 'Pharmacy', 'Laboratory', 'General'],
+          enum: ['Reception', 'Pharmacy', 'Laboratory', 'General', 'IPD', 'OPD', 'Administration'],
           required: true,
         },
         itemType: {
           type: String,
-          enum: ['Consultation', 'BedStay', 'Medication', 'LabTest', 'Procedure', 'Service'],
+          enum: ['Consultation', 'BedStay', 'Bed Stay', 'Medication', 'LabTest', 'Diagnostic Test', 'Procedure', 'Service'],
           default: 'Service',
         },
         referenceId: {
@@ -69,6 +69,10 @@ const HospitalInvoiceSchema = new mongoose.Schema(
         name: {
           type: String,
           required: true,
+          trim: true,
+        },
+        itemName: {
+          type: String,
           trim: true,
         },
         quantity: {

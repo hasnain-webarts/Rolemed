@@ -389,8 +389,11 @@ export default function PatientDossierPrintModal({
                     <div>
                       <span className="text-slate-400 block text-[11px]">Emergency Contact</span>
                       <span className="font-semibold text-slate-800">
-                        {p.emergencyContact || p.emergencyContact?.name || "N/A"} (
-                        {p.emergencyPhone || p.emergencyContact?.phone || "N/A"})
+                        {typeof p.emergencyContact === "object" && p.emergencyContact !== null
+                          ? `${p.emergencyContact.name || "Contact"}${p.emergencyContact.relation ? ` (${p.emergencyContact.relation})` : ""}${p.emergencyContact.phone ? ` • ${p.emergencyContact.phone}` : ""}`
+                          : p.emergencyContact
+                          ? `${p.emergencyContact}${p.emergencyPhone ? ` • ${p.emergencyPhone}` : ""}`
+                          : p.emergencyPhone || "N/A"}
                       </span>
                     </div>
                     <div className="col-span-2">

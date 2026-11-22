@@ -30,6 +30,12 @@ import {
   Users,
 } from "lucide-react";
 
+const formatDoctorName = (docName) => {
+  if (!docName) return "Doctor";
+  const trimmed = docName.trim();
+  return trimmed.startsWith("Dr.") || trimmed.startsWith("Dr ") ? trimmed : `Dr. ${trimmed}`;
+};
+
 export default function BillingDesk({
   department = "Reception",
   SidebarComponent,
@@ -223,16 +229,34 @@ export default function BillingDesk({
         });
 
         (data.charges.prescriptions || []).forEach((rx) => {
-          items.push({
-            id: `rx-${rx.prescriptionId}`,
-            department: "Pharmacy",
-            itemType: "Medication",
-            itemName: `Pharmacy Prescription: ${rx.drugCount} Medication(s) by ${rx.doctorName}`,
-            quantity: 1,
-            unitPrice: rx.totalAmount,
-            totalPrice: rx.totalAmount,
-            referenceId: rx.prescriptionId,
-          });
+          if (Array.isArray(rx.drugs) && rx.drugs.length > 0) {
+            rx.drugs.forEach((drug, dIdx) => {
+              const lineQty = Number(drug.qtyNeeded) || 1;
+              const unitPr = Number(drug.unitPrice) || (Number(drug.totalPrice) / lineQty) || 0;
+              const lineTotal = Number(drug.totalPrice) || (unitPr * lineQty);
+              items.push({
+                id: `rx-${rx.prescriptionId}-d-${dIdx}`,
+                department: "Pharmacy",
+                itemType: "Medication",
+                itemName: `${drug.name}${drug.dosage ? ` (${drug.dosage})` : ""} - ${formatDoctorName(rx.doctorName)}`,
+                quantity: lineQty,
+                unitPrice: unitPr,
+                totalPrice: lineTotal,
+                referenceId: rx.prescriptionId,
+              });
+            });
+          } else {
+            items.push({
+              id: `rx-${rx.prescriptionId}`,
+              department: "Pharmacy",
+              itemType: "Medication",
+              itemName: `Prescription: ${rx.drugCount || 1} Meds by ${rx.doctorName}`,
+              quantity: 1,
+              unitPrice: rx.totalAmount,
+              totalPrice: rx.totalAmount,
+              referenceId: rx.prescriptionId,
+            });
+          }
         });
 
         (data.charges.labOrders || []).forEach((lab) => {
@@ -309,16 +333,34 @@ export default function BillingDesk({
       });
     });
     (chargesData.prescriptions || []).forEach((rx) => {
-      items.push({
-        id: `rx-${rx.prescriptionId}`,
-        department: "Pharmacy",
-        itemType: "Medication",
-        itemName: `Pharmacy Prescription: ${rx.drugCount} Medication(s) by ${rx.doctorName}`,
-        quantity: 1,
-        unitPrice: rx.totalAmount,
-        totalPrice: rx.totalAmount,
-        referenceId: rx.prescriptionId,
-      });
+      if (Array.isArray(rx.drugs) && rx.drugs.length > 0) {
+        rx.drugs.forEach((drug, dIdx) => {
+          const lineQty = Number(drug.qtyNeeded) || 1;
+          const unitPr = Number(drug.unitPrice) || (Number(drug.totalPrice) / lineQty) || 0;
+          const lineTotal = Number(drug.totalPrice) || (unitPr * lineQty);
+          items.push({
+            id: `rx-${rx.prescriptionId}-d-${dIdx}`,
+            department: "Pharmacy",
+            itemType: "Medication",
+            itemName: `${drug.name}${drug.dosage ? ` (${drug.dosage})` : ""} - ${formatDoctorName(rx.doctorName)}`,
+            quantity: lineQty,
+            unitPrice: unitPr,
+            totalPrice: lineTotal,
+            referenceId: rx.prescriptionId,
+          });
+        });
+      } else {
+        items.push({
+          id: `rx-${rx.prescriptionId}`,
+          department: "Pharmacy",
+          itemType: "Medication",
+          itemName: `Prescription: ${rx.drugCount || 1} Meds by ${rx.doctorName}`,
+          quantity: 1,
+          unitPrice: rx.totalAmount,
+          totalPrice: rx.totalAmount,
+          referenceId: rx.prescriptionId,
+        });
+      }
     });
     (chargesData.labOrders || []).forEach((lab) => {
       items.push({
@@ -797,22 +839,30 @@ export default function BillingDesk({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
                             <Bed className="w-4 h-4 text-primary" />
-                            <span>Inpatient Stay & Ward Accommodation</span>
+                            <span>Inpatient Stay &amp; Ward Accommodation</span>
                           </div>
-                          <span className="text-xs font-semibold text-primary">
+                          <span className="text-xs font-bold text-primary">
                             Rs. {chargesData.admission.totalCharge}
                           </span>
                         </div>
 
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-                          <div>
-                            <span className="font-semibold text-slate-800 block">
-                              Ward: {chargesData.admission.ward} (Bed {chargesData.admission.bedNumber})
-                            </span>
-                            <span className="text-slate-500">
-                              Stay Duration: {chargesData.admission.stayDays} Day(s) @ Rs.{" "}
-                              {chargesData.admission.dailyRate} / day
-                            </span>
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800 text-sm">
+                                {chargesData.admission.ward} (Bed {chargesData.admission.bedNumber})
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
+                                {chargesData.admission.admissionId}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-[11px]">
+                              <span>Attending: <strong className="text-slate-700">{chargesData.admission.doctorName}</strong></span>
+                              <span>•</span>
+                              <span>Duration: <strong className="text-slate-700">{chargesData.admission.stayDays} Day(s)</strong></span>
+                              <span>•</span>
+                              <span>Room Rate: <strong className="text-slate-700">Rs. {chargesData.admission.dailyRate} / day</strong></span>
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -821,14 +871,14 @@ export default function BillingDesk({
                                 id: `adm-${chargesData.admission.admissionId}`,
                                 department: "Reception",
                                 itemType: "Bed Stay",
-                                itemName: `Inpatient Stay: ${chargesData.admission.ward} (Bed ${chargesData.admission.bedNumber})`,
+                                itemName: `Inpatient Stay: ${chargesData.admission.ward} (Bed ${chargesData.admission.bedNumber}) - ${chargesData.admission.stayDays} Day(s) @ Rs. ${chargesData.admission.dailyRate}/day`,
                                 quantity: chargesData.admission.stayDays,
                                 unitPrice: chargesData.admission.dailyRate,
                                 totalPrice: chargesData.admission.totalCharge,
                                 referenceId: chargesData.admission.admissionId,
                               })
                             }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition self-start sm:self-auto shrink-0 ${
                               isItemSelected(`adm-${chargesData.admission.admissionId}`)
                                 ? "bg-primary text-white"
                                 : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
@@ -836,7 +886,7 @@ export default function BillingDesk({
                           >
                             {isItemSelected(`adm-${chargesData.admission.admissionId}`)
                               ? "Selected"
-                              : "Add to Bill"}
+                              : "Add Bed Stay"}
                           </button>
                         </div>
                       </div>
@@ -848,7 +898,7 @@ export default function BillingDesk({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
                             <Calendar className="w-4 h-4 text-emerald-600" />
-                            <span>Doctor Consultations & OPD Visits ({chargesData.appointments.length})</span>
+                            <span>Doctor Consultations &amp; OPD Visits ({chargesData.appointments.length})</span>
                           </div>
                         </div>
 
@@ -856,15 +906,24 @@ export default function BillingDesk({
                           {chargesData.appointments.map((apt) => (
                             <div
                               key={apt.appointmentId}
-                              className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs"
+                              className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                             >
-                              <div>
-                                <span className="font-semibold text-slate-800 block">
-                                  {apt.doctorName} ({apt.department})
-                                </span>
-                                <span className="text-slate-500">
-                                  Date: {apt.date} • Fee: Rs. {apt.fee}
-                                </span>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-800 text-sm">
+                                    {apt.doctorName}
+                                  </span>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                    {apt.department}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-2 text-slate-500 text-[11px]">
+                                  <span>Ref: <strong className="font-mono text-slate-700">{apt.appointmentId}</strong></span>
+                                  <span>•</span>
+                                  <span>Date: <strong className="text-slate-700">{apt.date}</strong>{apt.time ? ` at ${apt.time}` : ""}</span>
+                                  <span>•</span>
+                                  <span>Fee: <strong className="text-emerald-700 font-bold">Rs. {apt.fee}</strong></span>
+                                </div>
                               </div>
                               <button
                                 type="button"
@@ -873,20 +932,20 @@ export default function BillingDesk({
                                     id: `apt-${apt.appointmentId}`,
                                     department: "Reception",
                                     itemType: "Consultation",
-                                    itemName: `Doctor Consultation: ${apt.doctorName}`,
+                                    itemName: `Doctor Consultation: ${apt.doctorName} (${apt.department}) - Ref: ${apt.appointmentId}`,
                                     quantity: 1,
                                     unitPrice: apt.fee,
                                     totalPrice: apt.fee,
                                     referenceId: apt.appointmentId,
                                   })
                                 }
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition self-start sm:self-auto shrink-0 ${
                                   isItemSelected(`apt-${apt.appointmentId}`)
                                     ? "bg-primary text-white"
                                     : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
                                 }`}
                               >
-                                {isItemSelected(`apt-${apt.appointmentId}`) ? "Selected" : "Add to Bill"}
+                                {isItemSelected(`apt-${apt.appointmentId}`) ? "Selected" : "Add Consultation"}
                               </button>
                             </div>
                           ))}
@@ -894,52 +953,157 @@ export default function BillingDesk({
                       </div>
                     )}
 
-                    {/* 3. Pharmacy Prescriptions */}
+                    {/* 3. Pharmacy Prescriptions & Itemized Medication List */}
                     {chargesData?.prescriptions?.length > 0 && (
-                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
                             <Pill className="w-4 h-4 text-amber-600" />
                             <span>Pharmacy Prescriptions ({chargesData.prescriptions.length})</span>
                           </div>
+                          <span className="text-xs text-slate-400">Itemized drug dispensation breakdown</span>
                         </div>
 
-                        <div className="space-y-2">
-                          {chargesData.prescriptions.map((rx) => (
-                            <div
-                              key={rx.prescriptionId}
-                              className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs"
-                            >
-                              <div>
-                                <span className="font-semibold text-slate-800 block">
-                                  Prescription by {rx.doctorName} ({rx.drugCount} medications)
-                                </span>
-                                <span className="text-slate-500">Total: Rs. {rx.totalAmount}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleItemSelection({
-                                    id: `rx-${rx.prescriptionId}`,
-                                    department: "Pharmacy",
-                                    itemType: "Medication",
-                                    itemName: `Pharmacy Prescription: ${rx.drugCount} Drugs`,
-                                    quantity: 1,
-                                    unitPrice: rx.totalAmount,
-                                    totalPrice: rx.totalAmount,
-                                    referenceId: rx.prescriptionId,
-                                  })
-                                }
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                  isItemSelected(`rx-${rx.prescriptionId}`)
-                                    ? "bg-primary text-white"
-                                    : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
-                                }`}
+                        <div className="space-y-3">
+                          {chargesData.prescriptions.map((rx) => {
+                            const rxDrugItems = (rx.drugs || []).map((drug, dIdx) => {
+                              const lineQty = Number(drug.qtyNeeded) || 1;
+                              const unitPr = Number(drug.unitPrice) || (Number(drug.totalPrice) / lineQty) || 0;
+                              const lineTotal = Number(drug.totalPrice) || (unitPr * lineQty);
+                              return {
+                                id: `rx-${rx.prescriptionId}-d-${dIdx}`,
+                                department: "Pharmacy",
+                                itemType: "Medication",
+                                itemName: `${drug.name}${drug.dosage ? ` (${drug.dosage})` : ""} - ${formatDoctorName(rx.doctorName)}`,
+                                quantity: lineQty,
+                                unitPrice: unitPr,
+                                totalPrice: lineTotal,
+                                referenceId: rx.prescriptionId,
+                              };
+                            });
+
+                            const allRxDrugsSelected = rxDrugItems.length > 0
+                              ? rxDrugItems.every((it) => isItemSelected(it.id))
+                              : isItemSelected(`rx-${rx.prescriptionId}`);
+
+                            return (
+                              <div
+                                key={rx.prescriptionId}
+                                className="p-4 bg-slate-50/70 rounded-xl border border-slate-200 text-xs space-y-3"
                               >
-                                {isItemSelected(`rx-${rx.prescriptionId}`) ? "Selected" : "Add to Bill"}
-                              </button>
-                            </div>
-                          ))}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-slate-800 text-sm">
+                                        Prescription by {rx.doctorName}
+                                      </span>
+                                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                        {rx.consultationId || "Rx-Order"}
+                                      </span>
+                                    </div>
+                                    <span className="text-slate-500 text-[11px]">
+                                      {rx.drugCount || (rx.drugs?.length || 0)} prescribed medication(s) • Total:{" "}
+                                      <strong className="text-slate-800 font-bold">Rs. {rx.totalAmount}</strong>
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (rxDrugItems.length > 0) {
+                                        if (allRxDrugsSelected) {
+                                          const removeIds = new Set(rxDrugItems.map((i) => i.id));
+                                          setSelectedItems(selectedItems.filter((i) => !removeIds.has(i.id)));
+                                        } else {
+                                          const existingMap = new Map(selectedItems.map((i) => [i.id, i]));
+                                          rxDrugItems.forEach((i) => existingMap.set(i.id, i));
+                                          setSelectedItems(Array.from(existingMap.values()));
+                                        }
+                                      } else {
+                                        toggleItemSelection({
+                                          id: `rx-${rx.prescriptionId}`,
+                                          department: "Pharmacy",
+                                          itemType: "Medication",
+                                          itemName: `Pharmacy Prescription: ${rx.doctorName}`,
+                                          quantity: 1,
+                                          unitPrice: rx.totalAmount,
+                                          totalPrice: rx.totalAmount,
+                                          referenceId: rx.prescriptionId,
+                                        });
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition self-start sm:self-auto ${
+                                      allRxDrugsSelected
+                                        ? "bg-primary text-white"
+                                        : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {allRxDrugsSelected ? "All Drugs Selected" : "Add All Drugs"}
+                                  </button>
+                                </div>
+
+                                {/* Itemized Medications Table */}
+                                {rx.drugs?.length > 0 ? (
+                                  <div className="bg-white rounded-lg border border-slate-200/80 overflow-hidden">
+                                    <table className="w-full text-left text-[11px]">
+                                      <thead className="bg-slate-100/70 text-slate-600 border-b border-slate-200 font-semibold">
+                                        <tr>
+                                          <th className="p-2 w-7 text-center">✓</th>
+                                          <th className="p-2">Medication Name</th>
+                                          <th className="p-2">Dosage &amp; Instructions</th>
+                                          <th className="p-2 text-center">Qty</th>
+                                          <th className="p-2 text-right">Unit Price</th>
+                                          <th className="p-2 text-right">Total (PKR)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                                        {rx.drugs.map((drug, dIdx) => {
+                                          const drugItemId = `rx-${rx.prescriptionId}-d-${dIdx}`;
+                                          const drugSelected = isItemSelected(drugItemId);
+                                          const lineQty = Number(drug.qtyNeeded) || 1;
+                                          const unitPr = Number(drug.unitPrice) || (Number(drug.totalPrice) / lineQty) || 0;
+                                          const lineTotal = Number(drug.totalPrice) || (unitPr * lineQty);
+
+                                          return (
+                                            <tr key={dIdx} className={drugSelected ? "bg-primary/[0.03]" : "hover:bg-slate-50/50"}>
+                                              <td className="p-2 text-center">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={drugSelected}
+                                                  onChange={() =>
+                                                    toggleItemSelection({
+                                                      id: drugItemId,
+                                                      department: "Pharmacy",
+                                                      itemType: "Medication",
+                                                      itemName: `${drug.name}${drug.dosage ? ` (${drug.dosage})` : ""} - ${formatDoctorName(rx.doctorName)}`,
+                                                      quantity: lineQty,
+                                                      unitPrice: unitPr,
+                                                      totalPrice: lineTotal,
+                                                      referenceId: rx.prescriptionId,
+                                                    })
+                                                  }
+                                                  className="w-3.5 h-3.5 text-primary rounded border-slate-300 focus:ring-primary cursor-pointer"
+                                                />
+                                              </td>
+                                              <td className="p-2 font-bold text-slate-800">{drug.name}</td>
+                                              <td className="p-2 text-slate-500">
+                                                {drug.dosage || "Standard dose"} {drug.instructions ? `• ${drug.instructions}` : ""}
+                                              </td>
+                                              <td className="p-2 text-center font-semibold text-slate-700">{lineQty}</td>
+                                              <td className="p-2 text-right text-slate-600">Rs. {unitPr}</td>
+                                              <td className="p-2 text-right font-bold text-slate-800">Rs. {lineTotal}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-slate-500 italic">No individual drug itemization recorded.</div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -958,15 +1122,26 @@ export default function BillingDesk({
                           {chargesData.labOrders.map((lab) => (
                             <div
                               key={lab.orderId}
-                              className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs"
+                              className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                             >
-                              <div>
-                                <span className="font-semibold text-slate-800 block">
-                                  {lab.testName} ({lab.priority})
-                                </span>
-                                <span className="text-slate-500">
-                                  Order #{lab.orderId} • Standard Fee: Rs. {lab.fee}
-                                </span>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-800 text-sm">
+                                    {lab.testName}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    lab.priority === "Emergency" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {lab.priority || "Routine"} Priority
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-2 text-slate-500 text-[11px]">
+                                  <span>Order Ref: <strong className="font-mono text-slate-700">{lab.orderId}</strong></span>
+                                  <span>•</span>
+                                  <span>Pathologist: <strong className="text-slate-700">{lab.doctorName || "Laboratory"}</strong></span>
+                                  <span>•</span>
+                                  <span>Panel Fee: <strong className="text-purple-700 font-bold">Rs. {lab.fee}</strong></span>
+                                </div>
                               </div>
                               <button
                                 type="button"
@@ -975,20 +1150,20 @@ export default function BillingDesk({
                                     id: `lab-${lab.orderId}`,
                                     department: "Laboratory",
                                     itemType: "Diagnostic Test",
-                                    itemName: `Diagnostic Lab: ${lab.testName}`,
+                                    itemName: `Diagnostic Lab: ${lab.testName} (${lab.priority || "Routine"}) - Ref: ${lab.orderId}`,
                                     quantity: 1,
                                     unitPrice: lab.fee,
                                     totalPrice: lab.fee,
                                     referenceId: lab.orderId,
                                   })
                                 }
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition self-start sm:self-auto shrink-0 ${
                                   isItemSelected(`lab-${lab.orderId}`)
                                     ? "bg-primary text-white"
                                     : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
                                 }`}
                               >
-                                {isItemSelected(`lab-${lab.orderId}`) ? "Selected" : "Add to Bill"}
+                                {isItemSelected(`lab-${lab.orderId}`) ? "Selected" : "Add Lab Test"}
                               </button>
                             </div>
                           ))}
@@ -1127,24 +1302,47 @@ export default function BillingDesk({
                 </div>
 
                 {/* Selected Items List */}
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   {selectedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs"
+                      className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start justify-between gap-2 text-xs"
                     >
-                      <div className="min-w-0 pr-2">
-                        <span className="font-semibold text-slate-800 block truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              item.department === "Pharmacy"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : item.department === "Laboratory"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {item.department}
+                          </span>
+                          {item.itemType && (
+                            <span className="text-[10px] text-slate-400 capitalize">{item.itemType}</span>
+                          )}
+                        </div>
+                        <span className="font-semibold text-slate-800 block text-xs leading-snug">
                           {item.itemName}
                         </span>
-                        <span className="text-[11px] text-slate-400">Dept: {item.department}</span>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          Qty: <span className="font-mono font-medium text-slate-600">{item.quantity}</span>
+                          {item.quantity > 1 && item.unitPrice ? (
+                            <span> • Rate: Rs. {item.unitPrice}</span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-bold text-slate-800 block">Rs. {item.totalPrice}</span>
+                        <span className="font-bold text-slate-900 block font-mono">
+                          Rs. {item.totalPrice}
+                        </span>
                         <button
                           type="button"
                           onClick={() => toggleItemSelection(item)}
-                          className="text-[10px] text-rose-500 hover:underline"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-medium hover:underline mt-1 inline-block"
                         >
                           Remove
                         </button>
@@ -1247,7 +1445,7 @@ export default function BillingDesk({
       {/* Printable Invoice / Thermal Receipt Modal */}
       {activeReceipt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-[560px] p-6 shadow-2xl border border-slate-200 space-y-5">
+          <div className="bg-white rounded-2xl w-full max-w-[660px] p-6 shadow-2xl border border-slate-200 space-y-5">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-primary font-bold text-base">
@@ -1292,20 +1490,67 @@ export default function BillingDesk({
                 </div>
               </div>
 
-              {/* Line Items */}
-              <div className="space-y-1.5 border-b border-dashed border-slate-300 pb-3">
-                <div className="flex items-center justify-between font-semibold text-[10px] text-slate-400 uppercase">
-                  <span>Description</span>
-                  <span>Amount (PKR)</span>
+              {/* Itemized Charges Table */}
+              <div className="border-b border-dashed border-slate-300 pb-3">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="py-1 px-1">Dept</th>
+                        <th className="py-1 px-1">Description</th>
+                        <th className="py-1 px-1 text-center">Qty</th>
+                        <th className="py-1 px-1 text-right">Rate</th>
+                        <th className="py-1 px-1 text-right">Amount (PKR)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/60">
+                      {(activeReceipt.items || []).map((it, idx) => {
+                        const title = it.itemName || it.name || "Clinical Service";
+                        const dept = it.department || "General";
+                        const qty = Number(it.quantity) || 1;
+                        const unitRate = Number(it.unitPrice) || (Number(it.totalPrice) / qty) || 0;
+                        const total = Number(it.totalPrice) || (unitRate * qty);
+
+                        return (
+                          <tr key={idx} className="text-slate-700">
+                            <td className="py-1.5 px-1 align-top">
+                              <span
+                                className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  dept === "Pharmacy"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : dept === "Laboratory"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}
+                              >
+                                {dept}
+                              </span>
+                            </td>
+                            <td className="py-1.5 px-1 align-top">
+                              <span className="font-semibold text-slate-800 block leading-tight">
+                                {title}
+                              </span>
+                              {it.referenceId && (
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  Ref: {it.referenceId}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5 px-1 align-top text-center font-mono text-slate-600">
+                              {qty}
+                            </td>
+                            <td className="py-1.5 px-1 align-top text-right font-mono text-slate-600 whitespace-nowrap">
+                              Rs. {unitRate}
+                            </td>
+                            <td className="py-1.5 px-1 align-top text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                              Rs. {total}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                {(activeReceipt.items || []).map((it, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-slate-700">
-                    <span className="truncate pr-2">
-                      {it.itemName} {it.quantity > 1 ? `(x${it.quantity})` : ""}
-                    </span>
-                    <span className="font-bold shrink-0">Rs. {it.totalPrice}</span>
-                  </div>
-                ))}
               </div>
 
               {/* Settlement Totals */}

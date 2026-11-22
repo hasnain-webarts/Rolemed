@@ -790,7 +790,7 @@ export default function PatientRegistration() {
                       <span className="text-[10px] text-outline block uppercase font-bold">Emergency Contact</span>
                       <span className="font-semibold text-on-surface">
                         {typeof selectedPatient.emergencyContact === 'object'
-                          ? `${selectedPatient.emergencyContact.name} (${selectedPatient.emergencyContact.relation || 'Contact'})`
+                          ? `${selectedPatient.emergencyContact?.name || 'Contact'} (${selectedPatient.emergencyContact?.relation || 'Kin'})`
                           : selectedPatient.emergencyContact}
                       </span>
                     </div>

@@ -126,10 +126,13 @@ export async function POST(req) {
       const lineTotal = Number(it.totalPrice) > 0 ? Number(it.totalPrice) : qty * unitPrice;
       computedSubtotal += lineTotal;
 
+      const title = it.itemName || it.name || 'Clinical Service';
+
       return {
         department: it.department || 'Reception',
         itemType: it.itemType || 'Service',
-        itemName: it.itemName || 'Clinical Service',
+        name: title,
+        itemName: title,
         quantity: qty,
         unitPrice,
         totalPrice: lineTotal,

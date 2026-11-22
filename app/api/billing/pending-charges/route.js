@@ -86,7 +86,7 @@ export async function GET(req) {
       const wardUpper = (adm.ward || '').toUpperCase();
       if (wardUpper.includes('ICU') || wardUpper.includes('INTENSIVE')) {
         dailyRate = settings.pricingRules?.dailyBedRateICU || 8000;
-      } else if (wardUpper.includes('EMERGENCY') || wardUpper.includes('ER') || wardUpper.includes('TRAUMA')) {
+      } else if (wardUpper.includes('EMERGENCY') || wardUpper.includes('TRAUMA') || /\bER\b/.test(wardUpper)) {
         dailyRate = settings.pricingRules?.dailyBedRateEmergency || 2000;
       }
 
