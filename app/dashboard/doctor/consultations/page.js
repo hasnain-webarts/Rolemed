@@ -19,10 +19,12 @@ import {
   AlertCircle,
   FlaskConical,
   FolderOpen,
+  Printer,
 } from 'lucide-react';
 import Sidebar from '@/components/Doctor_Sidebar';
 import Footer from '@/components/Footer';
 import PatientEHRModal from '@/components/PatientEHRModal';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 import Link from 'next/link';
 
 const STANDARD_LAB_TESTS = [
@@ -71,6 +73,7 @@ function ConsultationsContent() {
 
   const [showEHRModal, setShowEHRModal] = useState(false);
   const [ehrTargetPatientId, setEhrTargetPatientId] = useState(paramPatientId);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
 
   const [selectedPatient, setSelectedPatient] = useState(paramPatientId);
   const [symptoms, setSymptoms] = useState(() => {
@@ -582,6 +585,13 @@ function ConsultationsContent() {
                           </Link>
                           <div className="flex items-center gap-2">
                             <button
+                              onClick={() => setDossierPatientId(item.patientId)}
+                              className="cursor-pointer text-xs font-semibold text-slate-600 hover:text-primary flex items-center gap-1"
+                              title="Print Clinical Dossier"
+                            >
+                              <Printer size={13} /> Dossier
+                            </button>
+                            <button
                               onClick={() => {
                                 setEhrTargetPatientId(item.patientId);
                                 setShowEHRModal(true);
@@ -704,14 +714,23 @@ function ConsultationsContent() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">
-                  <Link
-                    href={`/dashboard/doctor/prescriptions?patientId=${viewingDetails.patientId || 'PAT-001'}&patientName=${encodeURIComponent(
-                      viewingDetails.patientName
-                    )}`}
-                    className="cursor-pointer px-4 py-2 bg-secondary text-on-secondary rounded-xl font-bold hover:opacity-90 transition-all clinical-shadow text-body-sm flex items-center gap-1.5"
-                  >
-                    <Pill size={16} /> Write E-Prescription
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/doctor/prescriptions?patientId=${viewingDetails.patientId || 'PAT-001'}&patientName=${encodeURIComponent(
+                        viewingDetails.patientName
+                      )}`}
+                      className="cursor-pointer px-4 py-2 bg-secondary text-on-secondary rounded-xl font-bold hover:opacity-90 transition-all clinical-shadow text-body-sm flex items-center gap-1.5"
+                    >
+                      <Pill size={16} /> Write E-Prescription
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setDossierPatientId(viewingDetails.patientId)}
+                      className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all text-body-sm flex items-center gap-1.5"
+                    >
+                      <Printer size={16} className="text-primary" /> Print Dossier
+                    </button>
+                  </div>
 
                   <button
                     onClick={() => setViewingDetails(null)}
@@ -731,6 +750,15 @@ function ConsultationsContent() {
           isOpen={showEHRModal}
           onClose={() => setShowEHRModal(false)}
         />
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="prescription"
+          />
+        )}
 
         <Footer />
       </main>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Bed, Plus, Check, DoorOpen, AlertCircle, Loader2, Filter, UserCheck, ShieldAlert, ArrowRightLeft, X, Wrench } from 'lucide-react';
+import { Search, Bed, Plus, Check, DoorOpen, AlertCircle, Loader2, Filter, UserCheck, ShieldAlert, ArrowRightLeft, X, Wrench, Printer } from 'lucide-react';
 import Sidebar from '@/components/Receptionist_Sidebar';
 import Footer from '@/components/Footer';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 
 export default function ReceptionistAdmissions() {
   const [admissions, setAdmissions] = useState([]);
@@ -37,6 +38,7 @@ export default function ReceptionistAdmissions() {
 
   // Destructive Discharge Confirmation State (RM-FE-UX-001)
   const [dischargeModalData, setDischargeModalData] = useState(null);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
 
   // Global Escape-key listener to close modals
   useEffect(() => {
@@ -882,34 +884,44 @@ export default function ReceptionistAdmissions() {
                           )}
                         </span>
 
-                        {isAdmitted && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openTransferModal(adm)}
-                              className="cursor-pointer text-xs font-semibold text-primary hover:bg-primary-fixed/30 px-3 py-1.5 rounded-xl border border-primary/20 flex items-center gap-1 transition-all"
-                              title="Transfer to different bed or ward"
-                            >
-                              <ArrowRightLeft size={13} /> Transfer Bed
-                            </button>
-                            <button
-                              type="button"
-                              disabled={dischargingId === adm.admissionId}
-                              onClick={() => handleDischargePatient(adm)}
-                              className="cursor-pointer text-xs font-bold text-error hover:bg-error-container/20 px-3 py-1.5 rounded-xl border border-error/20 flex items-center gap-1 transition-all"
-                            >
-                              {dischargingId === adm.admissionId ? (
-                                <>
-                                  <Loader2 size={13} className="animate-spin" /> Discharging...
-                                </>
-                              ) : (
-                                <>
-                                  <DoorOpen size={14} /> Process Discharge
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDossierPatientId(adm.patientId)}
+                            className="cursor-pointer text-xs font-semibold text-slate-700 hover:bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1 transition-all"
+                            title="Print Clinical Dossier & Clearance"
+                          >
+                            <Printer size={13} /> Dossier
+                          </button>
+                          {isAdmitted && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openTransferModal(adm)}
+                                className="cursor-pointer text-xs font-semibold text-primary hover:bg-primary-fixed/30 px-3 py-1.5 rounded-xl border border-primary/20 flex items-center gap-1 transition-all"
+                                title="Transfer to different bed or ward"
+                              >
+                                <ArrowRightLeft size={13} /> Transfer Bed
+                              </button>
+                              <button
+                                type="button"
+                                disabled={dischargingId === adm.admissionId}
+                                onClick={() => handleDischargePatient(adm)}
+                                className="cursor-pointer text-xs font-bold text-error hover:bg-error-container/20 px-3 py-1.5 rounded-xl border border-error/20 flex items-center gap-1 transition-all"
+                              >
+                                {dischargingId === adm.admissionId ? (
+                                  <>
+                                    <Loader2 size={13} className="animate-spin" /> Discharging...
+                                  </>
+                                ) : (
+                                  <>
+                                    <DoorOpen size={14} /> Process Discharge
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1129,6 +1141,15 @@ export default function ReceptionistAdmissions() {
           onConfirm={executeDischarge}
           onClose={() => setDischargeModalData(null)}
         />
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="discharge_billing"
+          />
+        )}
 
         <Footer />
       </main>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
+import PatientDossierPrintModal from "@/components/PatientDossierPrintModal";
 import {
   CreditCard,
   Search,
@@ -21,6 +22,12 @@ import {
   Phone,
   ShieldCheck,
   ShieldAlert,
+  Layers,
+  Split,
+  ChevronRight,
+  FileText,
+  Sparkles,
+  Users,
 } from "lucide-react";
 
 export default function BillingDesk({
@@ -43,67 +50,131 @@ export default function BillingDesk({
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
 
-  // Department configuration check state
+  // Unpaid Patients Queue State
+  const [unpaidQueue, setUnpaidQueue] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+  const [queueTab, setQueueTab] = useState("all"); // 'all' | 'inpatient' | 'consultation' | 'pharmacy' | 'laboratory'
+
+  // Department configuration state
   const [isDeptBillingEnabled, setIsDeptBillingEnabled] = useState(true);
+  const [deskConfig, setDeskConfig] = useState({ mode: "merged", isFinal: department.toLowerCase() === "reception" });
   const [activeDesksList, setActiveDesksList] = useState([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Universal Dossier Print Modal State
+  const [dossierModalOpen, setDossierModalOpen] = useState(false);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
+  const [dossierPreset, setDossierPreset] = useState("discharge_billing");
 
   const showNotice = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   };
 
+  // Load Batch Unpaid Queue for this Department Desk
+  const fetchUnpaidQueue = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/billing/pending-charges?department=${encodeURIComponent(department)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      if (data.success && Array.isArray(data.patients)) {
+        setUnpaidQueue(data.patients);
+        if (data.deskConfig) {
+          setDeskConfig(data.deskConfig);
+        }
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setLoadingQueue(false);
+    }
+  }, [department]);
+
+  const handleManualRefreshQueue = () => {
+    setLoadingQueue(true);
+    fetchUnpaidQueue();
+  };
+
+  // Load Department Config, Recent Invoices & Unpaid Queue
   useEffect(() => {
     let isMounted = true;
-    async function checkConfig() {
+
+    async function loadInitialData() {
       try {
-        const res = await fetch("/api/admin/billing-rules");
-        const data = await res.json();
-        if (isMounted && data.success && data.settings?.enabledBillingDepartments) {
-          const depts = data.settings.enabledBillingDepartments;
+        const [configRes, invoicesRes, queueRes] = await Promise.all([
+          fetch("/api/admin/billing-rules", { cache: "no-store" }),
+          fetch("/api/billing/invoices?limit=8", { cache: "no-store" }),
+          fetch(`/api/billing/pending-charges?department=${encodeURIComponent(department)}`, { cache: "no-store" }),
+        ]);
+
+        const [configData, invoicesData, queueData] = await Promise.all([
+          configRes.json(),
+          invoicesRes.json(),
+          queueRes.json(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (configData.success && configData.settings) {
+          const depts = configData.settings.departmentBillingConfig || configData.settings.enabledBillingDepartments;
           const key = department.toLowerCase();
-          const isEnabled = Boolean(depts[key]);
-          setIsDeptBillingEnabled(isEnabled);
+          const currentDept = configData.settings.departmentBillingConfig?.[key];
+
+          if (currentDept) {
+            setIsDeptBillingEnabled(Boolean(currentDept.enabled));
+            setDeskConfig(currentDept);
+          } else if (depts) {
+            setIsDeptBillingEnabled(Boolean(depts[key]));
+          }
 
           const activeList = [];
-          if (depts.reception) activeList.push("Reception Cashier Desk");
-          if (depts.pharmacy) activeList.push("Pharmacy Dispensary Counter");
-          if (depts.laboratory) activeList.push("Diagnostic Laboratory Counter");
+          if (configData.settings.departmentBillingConfig) {
+            const dbc = configData.settings.departmentBillingConfig;
+            if (dbc.reception?.enabled) activeList.push(`Reception (${dbc.reception.mode}${dbc.reception.isFinal ? " • Final" : ""})`);
+            if (dbc.pharmacy?.enabled) activeList.push(`Pharmacy (${dbc.pharmacy.mode}${dbc.pharmacy.isFinal ? " • Final" : ""})`);
+            if (dbc.laboratory?.enabled) activeList.push(`Laboratory (${dbc.laboratory.mode}${dbc.laboratory.isFinal ? " • Final" : ""})`);
+          } else if (depts) {
+            if (depts.reception) activeList.push("Reception Desk");
+            if (depts.pharmacy) activeList.push("Pharmacy Counter");
+            if (depts.laboratory) activeList.push("Diagnostic Lab");
+          }
           setActiveDesksList(activeList);
         }
-      } catch {
-        // Fallback to active
-      } finally {
-        if (isMounted) setLoadingConfig(false);
-      }
-    }
 
-    async function loadRecent() {
-      setLoadingRecent(true);
-      try {
-        const res = await fetch("/api/billing/invoices?limit=8");
-        const data = await res.json();
-        if (isMounted && data.success) {
-          setRecentInvoices(data.invoices || []);
+        if (invoicesData.success && Array.isArray(invoicesData.invoices)) {
+          setRecentInvoices(invoicesData.invoices);
         }
-      } catch {
-        // Ignore
+
+        if (queueData.success && Array.isArray(queueData.patients)) {
+          setUnpaidQueue(queueData.patients);
+          if (queueData.deskConfig) {
+            setDeskConfig(queueData.deskConfig);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load initial billing desk data:", err);
       } finally {
-        if (isMounted) setLoadingRecent(false);
+        if (isMounted) {
+          setLoadingConfig(false);
+          setLoadingRecent(false);
+          setLoadingQueue(false);
+        }
       }
     }
 
-    checkConfig();
-    loadRecent();
+    loadInitialData();
 
     return () => {
       isMounted = false;
     };
   }, [department]);
 
-  const handleSearchPatient = async (e) => {
-    if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
+  // Single Patient Pending Charges Lookup
+  const handleSearchPatient = async (targetId = null) => {
+    const query = typeof targetId === "string" ? targetId : searchQuery;
+    if (!query.trim()) return;
 
     setSearching(true);
     setPatientData(null);
@@ -112,7 +183,10 @@ export default function BillingDesk({
 
     try {
       const res = await fetch(
-        `/api/billing/pending-charges?patientId=${encodeURIComponent(searchQuery.trim())}`
+        `/api/billing/pending-charges?patientId=${encodeURIComponent(
+          query.trim()
+        )}&department=${encodeURIComponent(department)}`,
+        { cache: "no-store" }
       );
       const data = await res.json();
 
@@ -185,6 +259,19 @@ export default function BillingDesk({
     }
   };
 
+  // Select patient card from Unpaid Queue
+  const handleSelectPatientCard = (patient) => {
+    setSearchQuery(patient.patientId);
+    handleSearchPatient(patient.patientId);
+  };
+
+  // Open Universal Dossier Modal
+  const openDossierPrint = (pId, preset = "discharge_billing") => {
+    setDossierPatientId(pId);
+    setDossierPreset(preset);
+    setDossierModalOpen(true);
+  };
+
   const toggleItemSelection = (item) => {
     const exists = selectedItems.some((i) => i.id === item.id);
     if (exists) {
@@ -194,11 +281,66 @@ export default function BillingDesk({
     }
   };
 
+  const selectAllItems = () => {
+    if (!chargesData) return;
+    const items = [];
+    if (chargesData.admission) {
+      items.push({
+        id: `adm-${chargesData.admission.admissionId}`,
+        department: "Reception",
+        itemType: "Bed Stay",
+        itemName: `Inpatient Stay: ${chargesData.admission.ward} (Bed ${chargesData.admission.bedNumber}) - ${chargesData.admission.stayDays} Day(s)`,
+        quantity: chargesData.admission.stayDays,
+        unitPrice: chargesData.admission.dailyRate,
+        totalPrice: chargesData.admission.totalCharge,
+        referenceId: chargesData.admission.admissionId,
+      });
+    }
+    (chargesData.appointments || []).forEach((apt) => {
+      items.push({
+        id: `apt-${apt.appointmentId}`,
+        department: "Reception",
+        itemType: "Consultation",
+        itemName: `Doctor Consultation: ${apt.doctorName} (${apt.department})`,
+        quantity: 1,
+        unitPrice: apt.fee,
+        totalPrice: apt.fee,
+        referenceId: apt.appointmentId,
+      });
+    });
+    (chargesData.prescriptions || []).forEach((rx) => {
+      items.push({
+        id: `rx-${rx.prescriptionId}`,
+        department: "Pharmacy",
+        itemType: "Medication",
+        itemName: `Pharmacy Prescription: ${rx.drugCount} Medication(s) by ${rx.doctorName}`,
+        quantity: 1,
+        unitPrice: rx.totalAmount,
+        totalPrice: rx.totalAmount,
+        referenceId: rx.prescriptionId,
+      });
+    });
+    (chargesData.labOrders || []).forEach((lab) => {
+      items.push({
+        id: `lab-${lab.orderId}`,
+        department: "Laboratory",
+        itemType: "Diagnostic Test",
+        itemName: `Diagnostic Lab: ${lab.testName} (${lab.priority})`,
+        quantity: 1,
+        unitPrice: lab.fee,
+        totalPrice: lab.fee,
+        referenceId: lab.orderId,
+      });
+    });
+    setSelectedItems(items);
+  };
+
   const isItemSelected = (id) => selectedItems.some((i) => i.id === id);
 
   const cartSubtotal = selectedItems.reduce((s, it) => s + (Number(it.totalPrice) || 0), 0);
   const cartNetTotal = Math.max(0, cartSubtotal - Number(discount || 0));
 
+  // Submit Invoice Payment
   const handleCheckout = async () => {
     if (!patientData) {
       showNotice("error", "Please select a patient before collecting payment");
@@ -244,9 +386,12 @@ export default function BillingDesk({
       if (res.ok && data.success) {
         showNotice("success", `Invoice ${data.invoice.invoiceId} successfully issued and settled`);
         setActiveReceipt(data.invoice);
-        handleSearchPatient();
-        // Reload recent
-        fetch("/api/billing/invoices?limit=8")
+        // Refresh queue and patient charges
+        fetchUnpaidQueue();
+        handleSearchPatient(patientData.patientId);
+
+        // Reload recent invoices
+        fetch("/api/billing/invoices?limit=8", { cache: "no-store" })
           .then((r) => r.json())
           .then((d) => d.success && setRecentInvoices(d.invoices || []))
           .catch(() => {});
@@ -259,6 +404,27 @@ export default function BillingDesk({
       setSubmitting(false);
     }
   };
+
+  // Filtered Unpaid Queue
+  const filteredQueue = useMemo(() => {
+    return unpaidQueue.filter((p) => {
+      // Tab filter
+      if (queueTab === "inpatient" && !p.isAdmitted) return false;
+      if (queueTab === "consultation" && p.consultationCharges <= 0) return false;
+      if (queueTab === "pharmacy" && p.prescriptionCharges <= 0) return false;
+      if (queueTab === "laboratory" && p.labCharges <= 0) return false;
+
+      // Text search filter
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
+      const name = (p.name || "").toLowerCase();
+      const pid = (p.patientId || "").toLowerCase();
+      const phone = (p.phone || "").toLowerCase();
+      const ward = (p.ward || "").toLowerCase();
+
+      return name.includes(q) || pid.includes(q) || phone.includes(q) || ward.includes(q);
+    });
+  }, [unpaidQueue, queueTab, searchQuery]);
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden">
@@ -290,28 +456,53 @@ export default function BillingDesk({
             </div>
           )}
 
-          {/* Top Bar Banner with Search Form */}
+          {/* Top Bar Banner with Search Form & Routing Indicator */}
           <div className="w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-                <Receipt className="w-4 h-4" />
-                <span>{department} Cashier & Billing Counter</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-primary font-bold text-xs uppercase tracking-wider">
+                  <Receipt className="w-4 h-4" />
+                  <span>{department} Billing Counter</span>
+                </span>
+
+                {/* Desk Policy Badge */}
+                {deskConfig.mode === "merged" && deskConfig.isFinal ? (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    <span>Final Billing Desk (Consolidated)</span>
+                  </span>
+                ) : deskConfig.mode === "merged" ? (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                    Merged Department Counter
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                    Autonomous Counter (Separate)
+                  </span>
+                )}
               </div>
+
               <h1 className="text-2xl font-bold text-slate-800 mt-1">
-                Patient Hospital Billing & Fee Settlement
+                Patient Hospital Billing &amp; Fee Settlement
               </h1>
               <p className="text-sm text-slate-500 mt-1">
-                Lookup registered patients to aggregate unbilled bed stays, consultations, prescriptions, and lab tests into a single consolidated PKR invoice.
+                Select patients with outstanding balances below or search by ID to finalize payment and generate official dossiers.
               </p>
             </div>
 
-            {/* Patient Search Input */}
-            <form onSubmit={handleSearchPatient} className="flex items-center gap-2 w-full max-w-[440px]">
+            {/* Direct Patient Lookup Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearchPatient();
+              }}
+              className="flex items-center gap-2 w-full max-w-[420px]"
+            >
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Patient ID (e.g. PAT-012) or Phone..."
+                  placeholder="Patient ID (PAT-001) or Phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-primary focus:border-primary"
@@ -320,7 +511,7 @@ export default function BillingDesk({
               <button
                 type="submit"
                 disabled={searching || !searchQuery.trim()}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50 shrink-0"
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition disabled:opacity-50 shrink-0"
               >
                 {searching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 <span>Lookup</span>
@@ -348,11 +539,206 @@ export default function BillingDesk({
 
           {/* Main 2-Column Work Area */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left 2 Columns: Patient Profile & Pending Line Items */}
+            {/* Left 2 Columns: Unpaid Patients Queue Cards OR Selected Patient Details */}
             <div className="lg:col-span-2 space-y-6">
+              {/* SECTION: Live Unpaid Patients Queue */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span>Unpaid Patients Queue</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                        {unpaidQueue.length} Pending
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Patients with unbilled bed stay accruals, consultations, prescriptions, or laboratory tests.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleManualRefreshQueue}
+                    disabled={loadingQueue}
+                    className="text-xs text-primary hover:underline flex items-center gap-1 self-start sm:self-auto"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingQueue ? "animate-spin" : ""}`} />
+                    <span>Refresh Queue</span>
+                  </button>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => setQueueTab("all")}
+                    className={`px-3 py-1.5 rounded-xl transition ${
+                      queueTab === "all"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    All Pending ({unpaidQueue.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueueTab("inpatient")}
+                    className={`px-3 py-1.5 rounded-xl transition ${
+                      queueTab === "inpatient"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    Inpatients ({unpaidQueue.filter((p) => p.isAdmitted).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueueTab("consultation")}
+                    className={`px-3 py-1.5 rounded-xl transition ${
+                      queueTab === "consultation"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    Consultations ({unpaidQueue.filter((p) => p.consultationCharges > 0).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueueTab("pharmacy")}
+                    className={`px-3 py-1.5 rounded-xl transition ${
+                      queueTab === "pharmacy"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    Pharmacy Rx ({unpaidQueue.filter((p) => p.prescriptionCharges > 0).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueueTab("laboratory")}
+                    className={`px-3 py-1.5 rounded-xl transition ${
+                      queueTab === "laboratory"
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    Diagnostics ({unpaidQueue.filter((p) => p.labCharges > 0).length})
+                  </button>
+                </div>
+
+                {/* Queue Cards Grid */}
+                {loadingQueue ? (
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-primary" />
+                    <p className="text-xs">Scanning clinical charges for unpaid patients...</p>
+                  </div>
+                ) : filteredQueue.length === 0 ? (
+                  <div className="py-10 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl space-y-2">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                    <p className="text-sm font-semibold text-slate-700">No Unpaid Patients in this Filter</p>
+                    <p className="text-xs text-slate-400">All clinical encounters in this category are fully settled.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                    {filteredQueue.map((pat) => {
+                      const isSelected = patientData?.patientId === pat.patientId;
+
+                      return (
+                        <div
+                          key={pat.patientId}
+                          onClick={() => handleSelectPatientCard(pat)}
+                          className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between space-y-3 ${
+                            isSelected
+                              ? "border-primary bg-primary/[0.04] shadow-sm ring-1 ring-primary"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                                  {pat.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-800 text-sm block leading-snug">
+                                    {pat.name}
+                                  </span>
+                                  <span className="text-[11px] font-mono font-semibold text-slate-400">
+                                    {pat.patientId} • {pat.age ? `${pat.age}y` : ""} {pat.gender || ""}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                  Unpaid
+                                </span>
+                                <span className="text-sm font-black text-primary">
+                                  Rs. {pat.totalUnpaid}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                              {pat.isAdmitted && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                                  Ward: {pat.ward || "IPD"} (Bed {pat.bedNumber || "-"})
+                                </span>
+                              )}
+                              {pat.consultationCharges > 0 && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  OPD: Rs. {pat.consultationCharges}
+                                </span>
+                              )}
+                              {pat.prescriptionCharges > 0 && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                  Rx: Rs. {pat.prescriptionCharges}
+                                </span>
+                              )}
+                              {pat.labCharges > 0 && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                                  Lab: Rs. {pat.labCharges}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              <span>{pat.phone || "No phone"}</span>
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDossierPrint(pat.patientId, "discharge_billing");
+                                }}
+                                className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition"
+                                title="Print Clinical Dossier"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-[11px] font-bold text-primary flex items-center">
+                                <span>Select</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Patient Line Items & Detailed Breakdown */}
               {patientData ? (
                 <>
-                  {/* Patient Info Card */}
+                  {/* Selected Patient Banner */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
@@ -383,11 +769,23 @@ export default function BillingDesk({
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 block">Pending Charges Total</span>
-                      <span className="text-xl font-bold text-primary">
-                        Rs. {chargesData ? chargesData.grandTotal || 0 : 0}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openDossierPrint(patientData.patientId, "all")}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print Dossier</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={selectAllItems}
+                        className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition"
+                      >
+                        Select All Items
+                      </button>
                     </div>
                   </div>
 
@@ -465,7 +863,7 @@ export default function BillingDesk({
                                   {apt.doctorName} ({apt.department})
                                 </span>
                                 <span className="text-slate-500">
-                                  Date: {apt.date} • Consultation Fee: Rs. {apt.fee}
+                                  Date: {apt.date} • Fee: Rs. {apt.fee}
                                 </span>
                               </div>
                               <button
@@ -501,7 +899,7 @@ export default function BillingDesk({
                       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
-                            <Pill className="w-4 h-4 text-amber-500" />
+                            <Pill className="w-4 h-4 text-amber-600" />
                             <span>Pharmacy Prescriptions ({chargesData.prescriptions.length})</span>
                           </div>
                         </div>
@@ -514,11 +912,9 @@ export default function BillingDesk({
                             >
                               <div>
                                 <span className="font-semibold text-slate-800 block">
-                                  Prescribed by {rx.doctorName} ({rx.drugCount} medications)
+                                  Prescription by {rx.doctorName} ({rx.drugCount} medications)
                                 </span>
-                                <span className="text-slate-500">
-                                  Total Medication Value: Rs. {rx.totalAmount}
-                                </span>
+                                <span className="text-slate-500">Total: Rs. {rx.totalAmount}</span>
                               </div>
                               <button
                                 type="button"
@@ -527,7 +923,7 @@ export default function BillingDesk({
                                     id: `rx-${rx.prescriptionId}`,
                                     department: "Pharmacy",
                                     itemType: "Medication",
-                                    itemName: `Pharmacy Prescription (${rx.drugCount} Items)`,
+                                    itemName: `Pharmacy Prescription: ${rx.drugCount} Drugs`,
                                     quantity: 1,
                                     unitPrice: rx.totalAmount,
                                     totalPrice: rx.totalAmount,
@@ -616,14 +1012,14 @@ export default function BillingDesk({
                   </div>
                 </>
               ) : (
-                /* Empty state when no patient is searched yet */
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm space-y-3">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                    <Search className="w-8 h-8" />
+                /* Prompt to select card */
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                    <Search className="w-6 h-6" />
                   </div>
-                  <h2 className="text-lg font-bold text-slate-800">No Patient Selected</h2>
+                  <h3 className="text-base font-bold text-slate-800">No Patient Selected</h3>
                   <p className="text-xs text-slate-500 max-w-[420px] mx-auto leading-relaxed">
-                    Enter a Patient Registration Number (e.g. PAT-001, PAT-012) or phone number in the top lookup bar to aggregate pending clinical charges.
+                    Click any patient card in the Unpaid Queue above, or type an ID/phone into the lookup bar to load itemized checkout charges.
                   </p>
                 </div>
               )}
@@ -638,7 +1034,7 @@ export default function BillingDesk({
                   <button
                     onClick={() => {
                       setLoadingRecent(true);
-                      fetch("/api/billing/invoices?limit=8")
+                      fetch("/api/billing/invoices?limit=8", { cache: "no-store" })
                         .then((r) => r.json())
                         .then((d) => d.success && setRecentInvoices(d.invoices || []))
                         .finally(() => setLoadingRecent(false));
@@ -660,7 +1056,7 @@ export default function BillingDesk({
                         <th className="py-2.5 px-3">Items</th>
                         <th className="py-2.5 px-3">Total</th>
                         <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3 text-right">Receipt</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -671,7 +1067,7 @@ export default function BillingDesk({
                             <span className="font-semibold text-slate-800 block">{inv.patientName}</span>
                             <span className="text-[11px] text-slate-400">{inv.patientId}</span>
                           </td>
-                          <td className="py-2.5 px-3">{inv.items?.length || 0} line items</td>
+                          <td className="py-2.5 px-3">{inv.items?.length || 0} items</td>
                           <td className="py-2.5 px-3 font-bold text-slate-800">Rs. {inv.totalAmount}</td>
                           <td className="py-2.5 px-3">
                             <span
@@ -685,13 +1081,22 @@ export default function BillingDesk({
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <button
-                              onClick={() => setActiveReceipt(inv)}
-                              className="p-1 hover:bg-slate-100 rounded text-slate-600 transition"
-                              title="Print Thermal Receipt"
-                            >
-                              <Printer className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => setActiveReceipt(inv)}
+                                className="p-1 hover:bg-slate-100 rounded text-slate-600 transition"
+                                title="Print Thermal Receipt"
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openDossierPrint(inv.patientId, "discharge_billing")}
+                                className="p-1 hover:bg-slate-100 rounded text-primary transition"
+                                title="Print Complete Dossier"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -821,6 +1226,18 @@ export default function BillingDesk({
                   )}
                   <span>Collect Payment &amp; Issue Invoice</span>
                 </button>
+
+                {/* Print Dossier Quick Action if Patient Selected */}
+                {patientData && (
+                  <button
+                    type="button"
+                    onClick={() => openDossierPrint(patientData.patientId, "discharge_billing")}
+                    className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition"
+                  >
+                    <Printer className="w-4 h-4 text-primary" />
+                    <span>Print Medical &amp; Billing Dossier</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -849,7 +1266,7 @@ export default function BillingDesk({
             <div id="printable-receipt" className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 text-xs">
               <div className="text-center border-b border-dashed border-slate-300 pb-3">
                 <h2 className="text-base font-bold text-slate-800 tracking-tight">ROLEMED HEALTHCARE SYSTEM</h2>
-                <p className="text-[11px] text-slate-500">Multan Road / Medical Complex, Pakistan</p>
+                <p className="text-[11px] text-slate-500">Civil Lines / Medical Complex, Sialkot, Pakistan</p>
                 <p className="text-[11px] font-semibold text-primary mt-1">Invoice #{activeReceipt.invoiceId}</p>
                 <p className="text-[10px] text-slate-400">
                   {activeReceipt.createdAt ? new Date(activeReceipt.createdAt).toLocaleString() : ""}
@@ -916,24 +1333,42 @@ export default function BillingDesk({
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <button
-                onClick={() => setActiveReceipt(null)}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition"
+                onClick={() => openDossierPrint(activeReceipt.patientId, "discharge_billing")}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition"
               >
-                Close
+                <Printer className="w-4 h-4 text-primary" />
+                <span>Print Clearance Dossier</span>
               </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print Thermal Receipt</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveReceipt(null)}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Receipt</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Universal Clinical & Billing Dossier Print Modal */}
+      <PatientDossierPrintModal
+        isOpen={dossierModalOpen}
+        patientId={dossierPatientId}
+        onClose={() => setDossierModalOpen(false)}
+        initialPreset={dossierPreset}
+      />
     </div>
   );
 }

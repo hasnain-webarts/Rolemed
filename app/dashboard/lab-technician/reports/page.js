@@ -18,11 +18,13 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Lab_Technician_Sidebar';
 import Footer from '@/components/Footer';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 
 export default function DiagnosticsReports() {
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'critical' | 'routine'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -267,14 +269,25 @@ export default function DiagnosticsReports() {
                       {rep.date}
                     </span>
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedReport(rep)}
-                      className="cursor-pointer px-3 py-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-on-primary font-bold text-xs transition-all flex items-center gap-1.5"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      View Certificate
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setDossierPatientId(rep.patientId)}
+                        className="cursor-pointer px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-outline hover:text-on-surface hover:bg-surface-container font-bold text-xs transition-all flex items-center gap-1"
+                        title="Print Diagnostic Report & Dossier"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-primary" />
+                        <span>Print</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReport(rep)}
+                        className="cursor-pointer px-3 py-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-on-primary font-bold text-xs transition-all flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View Certificate
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -422,14 +435,11 @@ export default function DiagnosticsReports() {
                 <div className="pt-2 flex items-center justify-between border-t border-outline-variant/10">
                   <button
                     type="button"
-                    onClick={() => {
-                      // Non-blocking mock trigger deferred for unified print rollout
-                      alert(`Printing official laboratory certificate for ${selectedReport.orderId}... (Print functionality will be rolled out globally across all modules in one go)`);
-                    }}
-                    className="cursor-pointer px-4 py-2 border border-outline-variant/30 rounded-xl font-bold hover:bg-surface-container flex items-center gap-1.5 text-outline hover:text-on-surface"
+                    onClick={() => setDossierPatientId(selectedReport.patientId)}
+                    className="cursor-pointer px-4 py-2 border border-outline-variant/30 rounded-xl font-bold hover:bg-surface-container flex items-center gap-1.5 text-primary transition-colors"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    Print Diagnostic Certificate
+                    Print Diagnostic Certificate &amp; Dossier
                   </button>
 
                   <button
@@ -443,6 +453,15 @@ export default function DiagnosticsReports() {
               </div>
             </div>
           </div>
+        )}
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="lab_report"
+          />
         )}
 
         <Footer />

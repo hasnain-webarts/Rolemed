@@ -15,10 +15,12 @@ import {
   Stethoscope,
   Users,
   FileText,
+  Printer,
 } from 'lucide-react';
 import Sidebar from '@/components/Doctor_Sidebar';
 import Footer from '@/components/Footer';
 import PatientEHRModal from '@/components/PatientEHRModal';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 import { matchesPhone } from '@/lib/phoneUtils';
 import Link from 'next/link';
 
@@ -30,6 +32,7 @@ export default function Patients() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState('All');
   const [scope, setScope] = useState('mine'); // 'mine' | 'all'
   const [selectedPatientId, setSelectedPatientId] = useState(null); // Patient ID for EHR Modal
+  const [dossierPatientId, setDossierPatientId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   const bloodGroups = ['All', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -249,6 +252,14 @@ export default function Patients() {
                         <Phone size={12} /> {p.phone || 'No phone'}
                       </span>
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDossierPatientId(pId)}
+                          className="cursor-pointer text-xs font-semibold text-slate-600 hover:text-primary flex items-center gap-1"
+                          title="Print Clinical Dossier"
+                        >
+                          <Printer size={12} /> Dossier
+                        </button>
                         <Link
                           href={`/dashboard/doctor/consultations?patientId=${pId}&name=${encodeURIComponent(p.name)}&age=${p.age}&gender=${p.gender}`}
                           className="cursor-pointer text-xs font-bold text-secondary flex items-center gap-0.5 hover:underline"
@@ -294,6 +305,15 @@ export default function Patients() {
           isOpen={!!selectedPatientId}
           onClose={() => setSelectedPatientId(null)}
         />
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="all"
+          />
+        )}
 
         <Footer />
       </main>

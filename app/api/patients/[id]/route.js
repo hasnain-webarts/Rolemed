@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/db/connectDB';
-import { authenticateRoute, handleApiError } from '@/lib/authGuard';
+import { authenticateRoute } from '@/lib/authGuard';
 import { normalizePhoneForStorage } from '@/lib/phoneUtils';
 import Patient from '@/models/Patient';
 import Appointment from '@/models/Appointment';
@@ -8,6 +8,7 @@ import Admission from '@/models/Admission';
 import Consultation from '@/models/Consultation';
 import Prescription from '@/models/Prescription';
 import LabOrder from '@/models/LabOrder';
+import HospitalInvoice from '@/models/HospitalInvoice';
 
 export async function GET(req, { params }) {
   try {
@@ -18,7 +19,7 @@ export async function GET(req, { params }) {
     await connectDB();
     const { id } = await params;
 
-    // Search by either patientId (e.g. PAT-001) or MongoDB _id
+    // Search by either patientId (e.g. PAT-001) or Mongo ObjectId
     const patient = await Patient.findOne({
       $or: [{ patientId: id.toUpperCase() }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }],
     }).lean();
@@ -41,14 +42,15 @@ export async function GET(req, { params }) {
       }
     }
 
-    // Attach related clinical records in parallel
-    const [appointments, currentAdmission, allAdmissions, consultations, prescriptions, labOrders] = await Promise.all([
+    // Attach related clinical records and invoices in parallel
+    const [appointments, currentAdmission, allAdmissions, consultations, prescriptions, labOrders, invoices] = await Promise.all([
       Appointment.find({ patientId: patient.patientId }).sort({ date: -1 }).limit(50).lean(),
       Admission.findOne({ patientId: patient.patientId, status: 'Admitted' }).lean(),
       Admission.find({ patientId: patient.patientId }).sort({ admissionDate: -1 }).limit(20).lean(),
       Consultation.find({ patientId: patient.patientId }).sort({ createdAt: -1 }).limit(50).lean(),
       Prescription.find({ patientId: patient.patientId }).sort({ createdAt: -1 }).limit(50).lean(),
       LabOrder.find({ patientId: patient.patientId }).sort({ createdAt: -1 }).limit(50).lean(),
+      HospitalInvoice.find({ patientId: patient.patientId }).sort({ createdAt: -1 }).limit(50).lean(),
     ]);
 
     return NextResponse.json({
@@ -61,6 +63,7 @@ export async function GET(req, { params }) {
         consultations: consultations || [],
         prescriptions: prescriptions || [],
         labOrders: labOrders || [],
+        invoices: invoices || [],
       },
     });
   } catch (error) {

@@ -19,10 +19,12 @@ import {
   Calendar,
   AlertCircle,
   Edit2,
+  Printer,
 } from 'lucide-react';
 import Sidebar from '@/components/Receptionist_Sidebar';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 import { matchesPhone, normalizePhoneForStorage } from '@/lib/phoneUtils';
 
 const DEMO_PATIENTS = [
@@ -92,6 +94,7 @@ export default function PatientRegistration() {
   const [allergies, setAllergies] = useState('');
 
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [demoIndex, setDemoIndex] = useState(0);
 
@@ -656,6 +659,14 @@ export default function PatientRegistration() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
+                            onClick={() => setDossierPatientId(p.patientId)}
+                            className="cursor-pointer text-xs font-semibold text-slate-600 hover:text-primary flex items-center gap-1"
+                            title="Print Clinical Dossier"
+                          >
+                            <Printer size={12} /> Dossier
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleAutofillPatient(p)}
                             className="cursor-pointer text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
                           >
@@ -793,15 +804,23 @@ export default function PatientRegistration() {
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-outline-variant/20">
-                  <button
-                    onClick={() => {
-                      handleAutofillPatient(selectedPatient);
-                      setSelectedPatient(null);
-                    }}
-                    className="cursor-pointer px-4 py-2 bg-secondary text-on-secondary rounded-xl font-bold hover:opacity-90 transition-all text-xs flex items-center gap-1"
-                  >
-                    <Edit2 size={14} /> Auto-Fill Into Intake Form
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        handleAutofillPatient(selectedPatient);
+                        setSelectedPatient(null);
+                      }}
+                      className="cursor-pointer px-4 py-2 bg-secondary text-on-secondary rounded-xl font-bold hover:opacity-90 transition-all text-xs flex items-center gap-1"
+                    >
+                      <Edit2 size={14} /> Auto-Fill Intake
+                    </button>
+                    <button
+                      onClick={() => setDossierPatientId(selectedPatient.patientId)}
+                      className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all text-xs flex items-center gap-1"
+                    >
+                      <Printer size={14} className="text-primary" /> Print Dossier
+                    </button>
+                  </div>
                   <button
                     onClick={() => setSelectedPatient(null)}
                     className="cursor-pointer px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:opacity-90 transition-all clinical-shadow text-body-sm"
@@ -812,6 +831,15 @@ export default function PatientRegistration() {
               </div>
             </div>
           </div>
+        )}
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="all"
+          />
         )}
 
         <Footer />

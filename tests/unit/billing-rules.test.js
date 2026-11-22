@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import HospitalSetting from '@/models/HospitalSetting';
 import HospitalInvoice from '@/models/HospitalInvoice';
 
@@ -21,6 +21,22 @@ describe('Configurable Hospital Billing & Financial Routing System', () => {
       expect(setting.clearanceGate.emergencyBypass).toBe(true);
     });
 
+    it('initializes default departmentBillingConfig with Merged Reception as Final desk', () => {
+      const setting = new HospitalSetting({});
+      expect(setting.departmentBillingConfig).toBeDefined();
+      expect(setting.departmentBillingConfig.reception.enabled).toBe(true);
+      expect(setting.departmentBillingConfig.reception.mode).toBe('merged');
+      expect(setting.departmentBillingConfig.reception.isFinal).toBe(true);
+
+      expect(setting.departmentBillingConfig.pharmacy.enabled).toBe(true);
+      expect(setting.departmentBillingConfig.pharmacy.mode).toBe('merged');
+      expect(setting.departmentBillingConfig.pharmacy.isFinal).toBe(false);
+
+      expect(setting.departmentBillingConfig.laboratory.enabled).toBe(true);
+      expect(setting.departmentBillingConfig.laboratory.mode).toBe('separate');
+      expect(setting.departmentBillingConfig.laboratory.isFinal).toBe(false);
+    });
+
     it('supports custom departmental billing switches and mode configuration', () => {
       const hybridSetting = new HospitalSetting({
         billingMode: 'Hybrid',
@@ -28,6 +44,11 @@ describe('Configurable Hospital Billing & Financial Routing System', () => {
           reception: true,
           pharmacy: false,
           laboratory: true,
+        },
+        departmentBillingConfig: {
+          reception: { enabled: true, mode: 'merged', isFinal: true },
+          pharmacy: { enabled: true, mode: 'merged', isFinal: false },
+          laboratory: { enabled: true, mode: 'separate', isFinal: false },
         },
         pricingRules: {
           dailyBedRateGeneralWard: 2000,
@@ -40,9 +61,86 @@ describe('Configurable Hospital Billing & Financial Routing System', () => {
       expect(hybridSetting.enabledBillingDepartments.reception).toBe(true);
       expect(hybridSetting.enabledBillingDepartments.pharmacy).toBe(false);
       expect(hybridSetting.enabledBillingDepartments.laboratory).toBe(true);
+      expect(hybridSetting.departmentBillingConfig.reception.isFinal).toBe(true);
+      expect(hybridSetting.departmentBillingConfig.laboratory.mode).toBe('separate');
       expect(hybridSetting.pricingRules.dailyBedRateGeneralWard).toBe(2000);
       expect(hybridSetting.pricingRules.dailyBedRateICU).toBe(10000);
       expect(hybridSetting.pricingRules.standardConsultationFee).toBe(1500);
+    });
+  });
+
+  describe('Dynamic Billing Routing Logic (Merged vs Separate & Final Desk)', () => {
+    const simulateDeskRouting = (callerDept, config) => {
+      const callerKey = callerDept.toLowerCase();
+      const callerCfg = config[callerKey];
+
+      const canBillReception =
+        callerKey === 'reception' ||
+        (callerCfg.mode === 'merged' && callerCfg.isFinal && config.reception?.mode === 'merged');
+
+      const canBillPharmacy =
+        callerKey === 'pharmacy' ||
+        (callerCfg.mode === 'merged' && callerCfg.isFinal && config.pharmacy?.mode === 'merged');
+
+      const canBillLaboratory =
+        callerKey === 'laboratory' ||
+        (callerCfg.mode === 'merged' && callerCfg.isFinal && config.laboratory?.mode === 'merged');
+
+      return { canBillReception, canBillPharmacy, canBillLaboratory };
+    };
+
+    it('allows Merged Final Reception desk to bill Reception and Pharmacy, but excludes Separate Laboratory', () => {
+      const policyConfig = {
+        reception: { enabled: true, mode: 'merged', isFinal: true },
+        pharmacy: { enabled: true, mode: 'merged', isFinal: false },
+        laboratory: { enabled: true, mode: 'separate', isFinal: false },
+      };
+
+      const receptionDesk = simulateDeskRouting('Reception', policyConfig);
+      expect(receptionDesk.canBillReception).toBe(true);
+      expect(receptionDesk.canBillPharmacy).toBe(true);
+      expect(receptionDesk.canBillLaboratory).toBe(false);
+
+      const labDesk = simulateDeskRouting('Laboratory', policyConfig);
+      expect(labDesk.canBillReception).toBe(false);
+      expect(labDesk.canBillPharmacy).toBe(false);
+      expect(labDesk.canBillLaboratory).toBe(true);
+    });
+
+    it('enforces isolated billing when all departments are set to Separate mode', () => {
+      const separatePolicy = {
+        reception: { enabled: true, mode: 'separate', isFinal: false },
+        pharmacy: { enabled: true, mode: 'separate', isFinal: false },
+        laboratory: { enabled: true, mode: 'separate', isFinal: false },
+      };
+
+      const rec = simulateDeskRouting('Reception', separatePolicy);
+      expect(rec.canBillReception).toBe(true);
+      expect(rec.canBillPharmacy).toBe(false);
+      expect(rec.canBillLaboratory).toBe(false);
+
+      const phm = simulateDeskRouting('Pharmacy', separatePolicy);
+      expect(phm.canBillReception).toBe(false);
+      expect(phm.canBillPharmacy).toBe(true);
+      expect(phm.canBillLaboratory).toBe(false);
+
+      const lab = simulateDeskRouting('Laboratory', separatePolicy);
+      expect(lab.canBillReception).toBe(false);
+      expect(lab.canBillPharmacy).toBe(false);
+      expect(lab.canBillLaboratory).toBe(true);
+    });
+
+    it('allows Pharmacy to be designated as the Merged Final Desk', () => {
+      const pharmacyFinalPolicy = {
+        reception: { enabled: true, mode: 'merged', isFinal: false },
+        pharmacy: { enabled: true, mode: 'merged', isFinal: true },
+        laboratory: { enabled: true, mode: 'separate', isFinal: false },
+      };
+
+      const phm = simulateDeskRouting('Pharmacy', pharmacyFinalPolicy);
+      expect(phm.canBillReception).toBe(true);
+      expect(phm.canBillPharmacy).toBe(true);
+      expect(phm.canBillLaboratory).toBe(false);
     });
   });
 

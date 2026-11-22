@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 import {
   X,
   FileText,
@@ -28,6 +29,7 @@ export default function PatientEHRModal({ patientId, isOpen, onClose, initialTab
   const [patientData, setPatientData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showDossierPrint, setShowDossierPrint] = useState(false);
 
   const patientKey = isOpen && patientId ? `${typeof patientId === 'object' ? patientId.patientId || patientId._id : patientId}` : null;
   const [prevPatientKey, setPrevPatientKey] = useState(patientKey);
@@ -77,7 +79,7 @@ export default function PatientEHRModal({ patientId, isOpen, onClose, initialTab
   if (!isOpen) return null;
 
   const handlePrint = () => {
-    window.print();
+    setShowDossierPrint(true);
   };
 
   const p = patientData || (typeof patientId === 'object' ? patientId : null);
@@ -695,6 +697,15 @@ export default function PatientEHRModal({ patientId, isOpen, onClose, initialTab
           </button>
         </div>
       </div>
+
+      {showDossierPrint && (
+        <PatientDossierPrintModal
+          isOpen={showDossierPrint}
+          patientId={p?.patientId}
+          onClose={() => setShowDossierPrint(false)}
+          initialPreset="all"
+        />
+      )}
     </div>
   );
 }

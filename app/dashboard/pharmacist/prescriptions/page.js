@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Pharmacist_Sidebar';
 import Footer from '@/components/Footer';
+import PatientDossierPrintModal from '@/components/PatientDossierPrintModal';
 
 export default function PharmacyPrescriptions() {
   const { data: session } = useSession();
@@ -27,6 +28,7 @@ export default function PharmacyPrescriptions() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [dispensing, setDispensing] = useState(false);
+  const [dossierPatientId, setDossierPatientId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Dispensing Modal State
@@ -485,6 +487,15 @@ export default function PharmacyPrescriptions() {
                       </div>
 
                       <div className="flex items-center gap-sm shrink-0 w-full md:w-auto justify-between md:justify-end border-t border-outline-variant/10 pt-2 md:border-0 md:pt-0">
+                        <button
+                          type="button"
+                          onClick={() => setDossierPatientId(item.patientId)}
+                          className="cursor-pointer text-xs font-semibold text-slate-600 hover:text-primary px-2.5 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1 transition-all"
+                          title="Print Prescription Slip & Dossier"
+                        >
+                          <Printer size={13} /> Slip
+                        </button>
+
                         <span
                           className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                             isDispensed
@@ -771,15 +782,13 @@ export default function PharmacyPrescriptions() {
                   </span>
 
                   <div className="flex gap-2">
-                    {selectedRx.status === 'Dispensed' && (
-                      <button
-                        type="button"
-                        onClick={() => alert('Prescription slip print queue triggered.')}
-                        className="cursor-pointer px-4 py-2 border border-outline-variant/30 hover:bg-surface-container rounded-xl text-body-sm font-semibold flex items-center gap-1.5 transition-colors"
-                      >
-                        <Printer size={14} /> Print Receipt
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDossierPatientId(selectedRx.patientId)}
+                      className="cursor-pointer px-4 py-2 border border-outline-variant/30 hover:bg-surface-container rounded-xl text-body-sm font-semibold flex items-center gap-1.5 transition-colors text-primary"
+                    >
+                      <Printer size={14} /> Print Rx Slip &amp; Dossier
+                    </button>
                     <button
                       type="button"
                       onClick={() => setSelectedRx(null)}
@@ -808,6 +817,15 @@ export default function PharmacyPrescriptions() {
               </form>
             </div>
           </div>
+        )}
+
+        {dossierPatientId && (
+          <PatientDossierPrintModal
+            isOpen={Boolean(dossierPatientId)}
+            patientId={dossierPatientId}
+            onClose={() => setDossierPatientId(null)}
+            initialPreset="prescription"
+          />
         )}
 
         <Footer />
