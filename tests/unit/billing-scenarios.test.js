@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import HospitalSetting from '@/models/HospitalSetting';
 import HospitalInvoice from '@/models/HospitalInvoice';
+import AuditLog from '@/models/AuditLog';
 
 describe('Comprehensive Hospital Billing Scenarios (IPD, OPD, Pharmacy, Lab, Routing)', () => {
   // =========================================================================
@@ -551,6 +552,79 @@ describe('Comprehensive Hospital Billing Scenarios (IPD, OPD, Pharmacy, Lab, Rou
       const labLine = invoice.items.find((it) => it.itemType === 'Diagnostic Test');
       expect(labLine).toBeDefined();
       expect(labLine.totalPrice).toBe(800);
+    });
+
+    it('creates an invoice from Pharmacy Billing Counter with itemized drugs and validates AuditLog schema compliance', () => {
+      const rxInvoice = new HospitalInvoice({
+        invoiceId: 'INV-3001',
+        patientId: 'PAT-001',
+        patientName: 'Muhammad Ali',
+        patientPhone: '03002345678',
+        issuedDepartment: 'Pharmacy',
+        items: [
+          {
+            department: 'Pharmacy',
+            itemType: 'Medication',
+            name: 'Loprin 75mg (75mg) - Dr. Ayesha Siddiqui',
+            itemName: 'Loprin 75mg (75mg) - Dr. Ayesha Siddiqui',
+            quantity: 30,
+            unitPrice: 3,
+            totalPrice: 90,
+            referenceId: 'RX-001',
+          },
+          {
+            department: 'Pharmacy',
+            itemType: 'Medication',
+            name: 'Lipiget 20mg (20mg) - Dr. Ayesha Siddiqui',
+            itemName: 'Lipiget 20mg (20mg) - Dr. Ayesha Siddiqui',
+            quantity: 30,
+            unitPrice: 36,
+            totalPrice: 1080,
+            referenceId: 'RX-001',
+          },
+          {
+            department: 'Pharmacy',
+            itemType: 'Medication',
+            name: 'Nexum 40mg (40mg) - Dr. Ayesha Siddiqui',
+            itemName: 'Nexum 40mg (40mg) - Dr. Ayesha Siddiqui',
+            quantity: 14,
+            unitPrice: 39.79,
+            totalPrice: 557.1,
+            referenceId: 'RX-001',
+          },
+        ],
+        subtotal: 1727.1,
+        discount: 0,
+        totalAmount: 1727.1,
+        paidAmount: 1727.1,
+        paymentStatus: 'Paid',
+        paymentMethod: 'Cash',
+        collectedBy: 'Zahid Khan (Pharmacist)',
+        cashierRole: 'pharmacist',
+      });
+
+      expect(rxInvoice.invoiceId).toBe('INV-3001');
+      expect(rxInvoice.issuedDepartment).toBe('Pharmacy');
+      expect(rxInvoice.items).toHaveLength(3);
+      expect(rxInvoice.totalAmount).toBe(1727.1);
+      expect(rxInvoice.collectedBy).toBe('Zahid Khan (Pharmacist)');
+
+      // Verify AuditLog record matches schema specifications
+      const auditEntry = new AuditLog({
+        action: 'BILLING',
+        module: 'Billing',
+        description: `Issued hospital invoice ${rxInvoice.invoiceId} for ${rxInvoice.patientName} (${rxInvoice.patientId}) - Rs. ${rxInvoice.totalAmount}`,
+        user: rxInvoice.collectedBy,
+        userRole: rxInvoice.cashierRole,
+        ip: '127.0.0.1',
+        alert: false,
+      });
+
+      expect(auditEntry.action).toBe('BILLING');
+      expect(auditEntry.module).toBe('Billing');
+      expect(auditEntry.user).toBe('Zahid Khan (Pharmacist)');
+      const valError = auditEntry.validateSync();
+      expect(valError).toBeUndefined();
     });
   });
 });

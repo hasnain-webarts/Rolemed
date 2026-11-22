@@ -205,24 +205,21 @@ export async function POST(req) {
       }
     }
 
-    // Record audit log
-    await AuditLog.create({
-      action: 'HOSPITAL_INVOICE_ISSUED',
-      performedBy: auth.user?.id || 'SYSTEM',
-      performedByName: cashierName,
-      performedByRole: auth.user?.role || 'receptionist',
-      targetModel: 'HospitalInvoice',
-      targetId: newInvoice._id.toString(),
-      details: {
-        invoiceId,
-        patientId,
-        totalAmount: netTotal,
-        paymentStatus,
-        paymentMethod,
-        itemCount: validatedItems.length,
-      },
-      ipAddress: req.headers.get('x-forwarded-for') || '127.0.0.1',
-    });
+    // Record audit log safely without interrupting invoice issuance
+    try {
+      await AuditLog.create({
+        action: 'BILLING',
+        module: 'Billing',
+        description: `Issued hospital invoice ${invoiceId} for ${patientName} (${patientId}) - Rs. ${netTotal}`,
+        user: cashierName,
+        userId: auth.user?.id && mongoose.Types.ObjectId.isValid(auth.user.id) ? auth.user.id : undefined,
+        userRole: auth.user?.role || 'receptionist',
+        ip: req.headers.get('x-forwarded-for') || '127.0.0.1',
+        alert: false,
+      });
+    } catch (auditErr) {
+      console.warn('[AuditLog Warn]: Could not record invoice audit log:', auditErr.message);
+    }
 
     return NextResponse.json({
       success: true,
@@ -232,7 +229,7 @@ export async function POST(req) {
   } catch (error) {
     console.error('[API Hospital Invoices POST Error]:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create hospital invoice' },
+      { success: false, error: error?.message || 'Failed to create hospital invoice' },
       { status: 500 }
     );
   }

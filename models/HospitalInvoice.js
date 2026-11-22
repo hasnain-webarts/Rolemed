@@ -118,10 +118,20 @@ const HospitalInvoiceSchema = new mongoose.Schema(
       default: 'Paid',
       index: true,
     },
+    paidAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     paymentMethod: {
       type: String,
-      enum: ['Cash', 'Credit/Debit Card', 'Bank Transfer', 'EasyPaisa/JazzCash', 'Insurance', 'Waived'],
+      enum: ['Cash', 'Credit/Debit Card', 'Bank Transfer', 'EasyPaisa/JazzCash', 'JazzCash', 'EasyPaisa', 'Insurance', 'Waived'],
       default: 'Cash',
+    },
+    collectedBy: {
+      type: String,
+      trim: true,
+      default: 'Hospital Cashier',
     },
     cashierName: {
       type: String,
